@@ -2,6 +2,7 @@ package com.studysphere.user.service;
 
 import com.studysphere.common.enums.Role;
 import com.studysphere.common.enums.AccountStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.studysphere.user.dto.CollegeAdminRegistrationDto;
 import com.studysphere.user.dto.StudentRegistrationDto;
 import com.studysphere.user.model.College;
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CollegeRepository collegeRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // SUPER ADMIN ONLY: Creates a college in the system
     public College createCollege(String name, String domain) {
@@ -34,7 +36,7 @@ public class UserService {
         User admin = new User();
         admin.setFullName(dto.getAdminFullName());
         admin.setEmail(dto.getAdminEmail());
-        admin.setPassword(dto.getAdminPassword()); 
+        admin.setPassword(passwordEncoder.encode(dto.getAdminPassword())); 
         admin.setStudentId("ADMIN-" + System.currentTimeMillis()); // Generate a unique ID
         admin.setRole(Role.COLLEGE_ADMIN);
         admin.setCollege(college);
@@ -50,7 +52,7 @@ public class UserService {
         User student = new User();
         student.setFullName(dto.getFullName());
         student.setEmail(dto.getEmail());
-        student.setPassword(dto.getPassword()); 
+        student.setPassword(passwordEncoder.encode(dto.getPassword())); 
         student.setStudentId(dto.getStudentId());
         student.setRole(Role.STUDENT);
         student.setCollege(college);
