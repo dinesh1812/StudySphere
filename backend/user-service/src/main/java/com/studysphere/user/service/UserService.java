@@ -5,6 +5,7 @@ import com.studysphere.common.enums.AccountStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.studysphere.user.dto.CollegeAdminRegistrationDto;
 import com.studysphere.user.dto.StudentRegistrationDto;
+import com.studysphere.user.dto.UserSummaryDto;
 import com.studysphere.user.model.College;
 import com.studysphere.user.model.User;
 import com.studysphere.user.repository.CollegeRepository;
@@ -67,5 +68,11 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setStatus(AccountStatus.APPROVED);
         userRepository.save(user);
+    }
+
+    public UserSummaryDto getUserSummary(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name());
     }
 }

@@ -3,6 +3,7 @@ package com.studysphere.user.controller;
 import com.studysphere.common.response.ApiResponse;
 import com.studysphere.user.dto.CollegeAdminRegistrationDto;
 import com.studysphere.user.dto.StudentRegistrationDto;
+import com.studysphere.user.dto.UserSummaryDto;
 import com.studysphere.user.model.College;
 import com.studysphere.user.model.User;
 import com.studysphere.user.service.UserService;
@@ -43,5 +44,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<Void>> approveUser(@PathVariable Long userId) {
         userService.approveUser(userId);
         return ResponseEntity.ok(new ApiResponse<Void>(true, "User approved successfully.", null));
+    }
+
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<ApiResponse<UserSummaryDto>> getUserSummary(@PathVariable Long id) {
+        UserSummaryDto summary = userService.getUserSummary(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "User summary fetched", summary));
     }
 }
