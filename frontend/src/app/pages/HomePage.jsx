@@ -6,7 +6,7 @@ import { BookOpen, TrendingUp } from 'lucide-react';
 export function HomePage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
-  const handleBookmark = (id: string) => {
+  const handleBookmark = (id) => {
     setBookmarkedIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
