@@ -9,6 +9,7 @@ public class PostResponse {
     private String title;
     private String content;
     private Long collegeId;
+    private Long communityId; // If null, it goes to the General Feed
     private int upvotes;
     private LocalDateTime createdAt;
     

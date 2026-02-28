@@ -8,4 +8,5 @@ public class PostRequest {
     private String content;
     private Long authorId;
     private Long collegeId;
+    private Long communityId; // If null, it goes to the General Feed
 }

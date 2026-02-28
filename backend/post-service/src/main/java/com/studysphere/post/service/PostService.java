@@ -22,14 +22,16 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-    private final UserClient userClient; // INJECT THE FEIGN CLIENT
+    private final UserClient userClient; 
 
+    // --- PRIVATE HELPER METHOD FOR DATA AGGREGATION ---
     private PostResponse mapToPostResponse(Post post) {
         PostResponse response = new PostResponse();
         response.setId(post.getId());
         response.setTitle(post.getTitle());
         response.setContent(post.getContent());
         response.setCollegeId(post.getCollegeId());
+        response.setCommunityId(post.getCommunityId()); // BUG FIXED: Community ID is now mapped
         response.setUpvotes(post.getUpvotes());
         response.setCreatedAt(post.getCreatedAt());
 
@@ -51,35 +53,42 @@ public class PostService {
         return response;
     }
 
+    // 1. CREATE POST 
     public PostResponse createPost(PostRequest request) {
         Post post = new Post();
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setAuthorId(request.getAuthorId());
         post.setCollegeId(request.getCollegeId());
+        post.setCommunityId(request.getCommunityId()); 
         
         Post savedPost = postRepository.save(post);
         return mapToPostResponse(savedPost);
     }
 
-    public List<PostResponse> getCollegeFeed(Long collegeId) {
-        List<Post> posts = postRepository.findByCollegeIdOrderByCreatedAtDesc(collegeId);
-        
-        // Convert all Post entities to PostResponse DTOs
-        return posts.stream()
-                .map(this::mapToPostResponse)
-                .collect(Collectors.toList());
+    // 2. FETCH GENERAL FEED 
+    public List<PostResponse> getGeneralFeed() {
+        List<Post> posts = postRepository.findByCommunityIdIsNullOrderByCreatedAtDesc();
+        return posts.stream().map(this::mapToPostResponse).collect(Collectors.toList());
     }
 
-    public Post upvotePost(Long postId) {
+    // 3. FETCH COMMUNITY FEED 
+    public List<PostResponse> getCommunityFeed(Long communityId) {
+        List<Post> posts = postRepository.findByCommunityIdOrderByCreatedAtDesc(communityId);
+        return posts.stream().map(this::mapToPostResponse).collect(Collectors.toList());
+    }
+
+    // 4. UPVOTE POST (BUG FIXED: Now returns PostResponse)
+    public PostResponse upvotePost(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setUpvotes(post.getUpvotes() + 1);
-        return postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+        return mapToPostResponse(savedPost); 
     }
 
+    // 5. ADD COMMENT
     public Comment addComment(CommentRequest request) {
-        // Ensure post exists before commenting
         postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
@@ -90,6 +99,7 @@ public class PostService {
         return commentRepository.save(comment);
     }
 
+    // 6. GET COMMENTS
     public List<Comment> getCommentsForPost(Long postId) {
         return commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
     }

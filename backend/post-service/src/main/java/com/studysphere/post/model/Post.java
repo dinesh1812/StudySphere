@@ -29,6 +29,8 @@ public class Post {
     @Column(nullable = false)
     private Long collegeId;
 
+    private Long communityId;
+
     private int upvotes = 0;
 
     @CreationTimestamp

@@ -5,7 +5,6 @@ import com.studysphere.post.dto.CommentRequest;
 import com.studysphere.post.dto.PostRequest;
 import com.studysphere.post.dto.PostResponse;
 import com.studysphere.post.model.Comment;
-import com.studysphere.post.model.Post;
 import com.studysphere.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,15 +25,22 @@ public class PostController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Post created successfully", post));
     }
 
-    @GetMapping("/college/{collegeId}")
-    public ResponseEntity<ApiResponse<List<PostResponse>>> getCollegeFeed(@PathVariable Long collegeId) {
-        List<PostResponse> feed = postService.getCollegeFeed(collegeId);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Feed fetched successfully", feed));
+    @GetMapping("/general")
+    public ResponseEntity<ApiResponse<List<PostResponse>>> getGeneralFeed() {
+        List<PostResponse> feed = postService.getGeneralFeed();
+        return ResponseEntity.ok(new ApiResponse<>(true, "General feed fetched", feed));
     }
 
+    @GetMapping("/community/{communityId}")
+    public ResponseEntity<ApiResponse<List<PostResponse>>> getCommunityFeed(@PathVariable Long communityId) {
+        List<PostResponse> feed = postService.getCommunityFeed(communityId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Community feed fetched", feed));
+    }
+
+    // BUG FIXED: Return type updated to match the Service
     @PutMapping("/{postId}/upvote")
-    public ResponseEntity<ApiResponse<Post>> upvotePost(@PathVariable Long postId) {
-        Post updatedPost = postService.upvotePost(postId);
+    public ResponseEntity<ApiResponse<PostResponse>> upvotePost(@PathVariable Long postId) {
+        PostResponse updatedPost = postService.upvotePost(postId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Post upvoted", updatedPost));
     }
 
