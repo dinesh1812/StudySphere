@@ -22,28 +22,32 @@ public class UserController {
     @PostMapping("/colleges")
     public ResponseEntity<ApiResponse<College>> createCollege(@RequestParam String name, @RequestParam String domain) {
         College createdCollege = userService.createCollege(name, domain);
-        return ResponseEntity.ok(new ApiResponse<College>(true, "College created successfully.", createdCollege));
+        return ResponseEntity.ok(new ApiResponse<>(true, "College created successfully.", createdCollege));
     }
 
     // Register a College Admin (Assigns PENDING status)
     @PostMapping("/register/admin")
     public ResponseEntity<ApiResponse<User>> registerCollegeAdmin(@RequestBody CollegeAdminRegistrationDto dto) {
         User createdUser = userService.registerCollegeAdmin(dto);
-        return ResponseEntity.ok(new ApiResponse<User>(true, "College Admin registered. Waiting for Super Admin approval.", createdUser));
+        return ResponseEntity.ok(new ApiResponse<>(true, "College Admin registered. Waiting for Super Admin approval.", createdUser));
     }
 
     // Register a Student (Assigns PENDING status)
     @PostMapping("/register/student")
     public ResponseEntity<ApiResponse<User>> registerStudent(@RequestBody StudentRegistrationDto dto) {
         User createdUser = userService.registerStudent(dto);
-        return ResponseEntity.ok(new ApiResponse<User>(true, "Student registered. Waiting for College Admin approval.", createdUser));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Student registered. Waiting for College Admin approval.", createdUser));
     }
 
     // Unified Approval Endpoint: Super Admin approves C-Admins, C-Admins approve Students
+    // IDOR FIX: Now explicitly requires the adminId parameter
     @PutMapping("/approve/{userId}")
-    public ResponseEntity<ApiResponse<Void>> approveUser(@PathVariable Long userId) {
-        userService.approveUser(userId);
-        return ResponseEntity.ok(new ApiResponse<Void>(true, "User approved successfully.", null));
+    public ResponseEntity<ApiResponse<Void>> approveUser(
+            @PathVariable Long userId, 
+            @RequestParam Long adminId) { 
+        
+        userService.approveUser(userId, adminId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "User approved successfully.", null));
     }
 
     @GetMapping("/{id}/summary")

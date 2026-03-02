@@ -1,8 +1,7 @@
 package com.studysphere.user.service;
 
-import com.studysphere.common.enums.Role;
 import com.studysphere.common.enums.AccountStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.studysphere.common.enums.Role;
 import com.studysphere.user.dto.CollegeAdminRegistrationDto;
 import com.studysphere.user.dto.StudentRegistrationDto;
 import com.studysphere.user.dto.UserSummaryDto;
@@ -11,6 +10,7 @@ import com.studysphere.user.model.User;
 import com.studysphere.user.repository.CollegeRepository;
 import com.studysphere.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -62,12 +62,40 @@ public class UserService {
         return userRepository.save(student);
     }
 
-    // Handles both Super Admin approving C-Admins, and C-Admins approving Students
-    public void approveUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setStatus(AccountStatus.APPROVED);
-        userRepository.save(user);
+    // Unified Approval Endpoint: Super Admin approves C-Admins, C-Admins approve Students
+    public void approveUser(Long targetUserId, Long adminId) {
+        
+        // 1. Fetch the Admin attempting the action
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin not found."));
+
+        // 2. Verify they actually have admin privileges
+        if (admin.getRole() != Role.COLLEGE_ADMIN && admin.getRole() != Role.SUPER_ADMIN) {
+            throw new RuntimeException("Unauthorized: Only administrators can perform approvals.");
+        }
+
+        // 3. Fetch the target User
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("User to approve not found."));
+
+        // 4. THE IDOR FIX: Strict Tenant Isolation & Hierarchy Check
+        if (admin.getRole() == Role.COLLEGE_ADMIN) {
+            
+            // College Admins can ONLY approve Students
+            if (targetUser.getRole() != Role.STUDENT) {
+                throw new RuntimeException("Security Violation: College Admins can only approve students.");
+            }
+            
+            // College Admins can ONLY approve Students in their exact same college
+            if (admin.getCollege() == null || targetUser.getCollege() == null || 
+                !admin.getCollege().getId().equals(targetUser.getCollege().getId())) {
+                throw new RuntimeException("Security Violation: You can only approve students from your own college.");
+            }
+        }
+
+        // 5. If they survive the gauntlet, approve the account
+        targetUser.setStatus(AccountStatus.APPROVED);
+        userRepository.save(targetUser);
     }
 
     public UserSummaryDto getUserSummary(Long id) {

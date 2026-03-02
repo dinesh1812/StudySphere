@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -50,7 +51,6 @@ public class User {
     @ManyToOne
     @JoinColumn(name = "college_id")
     private College college;
-
 
     // Account creation timestamp
     private LocalDateTime createdAt = LocalDateTime.now();
