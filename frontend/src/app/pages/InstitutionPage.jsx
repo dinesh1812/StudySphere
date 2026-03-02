@@ -11,7 +11,7 @@ export function InstitutionPage() {
     (c) => c.visibility === 'Institution-Only' || c.visibility === 'Public'
   );
 
-  const handleBookmark = (id: string) => {
+  const handleBookmark = (id) => {
     setBookmarkedIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
