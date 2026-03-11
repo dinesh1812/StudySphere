@@ -10,6 +10,7 @@ import com.studysphere.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -54,5 +55,19 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserSummaryDto>> getUserSummary(@PathVariable Long id) {
         UserSummaryDto summary = userService.getUserSummary(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "User summary fetched", summary));
+    }
+
+    // Super Admin: list all pending College Admins
+    @GetMapping("/pending-admins")
+    public ResponseEntity<ApiResponse<List<User>>> getPendingCollegeAdmins() {
+        List<User> pending = userService.getPendingCollegeAdmins();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending admins fetched", pending));
+    }
+
+    // College Admin: list pending students in their college
+    @GetMapping("/colleges/{collegeId}/pending-students")
+    public ResponseEntity<ApiResponse<List<User>>> getPendingStudents(@PathVariable Long collegeId) {
+        List<User> pending = userService.getPendingStudentsForCollege(collegeId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending students fetched", pending));
     }
 }

@@ -12,6 +12,7 @@ import com.studysphere.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -102,5 +103,15 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name());
+    }
+
+    // List all pending College Admins - called by Super Admin
+    public List<User> getPendingCollegeAdmins() {
+        return userRepository.findByRoleAndStatus(Role.COLLEGE_ADMIN, AccountStatus.PENDING);
+    }
+
+    // List all pending Students in a college - called by College Admin
+    public List<User> getPendingStudentsForCollege(Long collegeId) {
+        return userRepository.findByCollegeIdAndStatus(collegeId, AccountStatus.PENDING);
     }
 }

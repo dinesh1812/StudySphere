@@ -1,26 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ContentThumbnail } from '@/app/components/ContentThumbnail';
-import { mockContent } from '@/app/data/mockContent';
-import { Building2, Shield, Users, Award } from 'lucide-react';
+import { postService } from '@/api/postService';
+import { Building2, Shield, Users, Award, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function InstitutionPage() {
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
+  const [posts, setPosts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter for institution-only and public content
-  const institutionContent = mockContent.filter(
-    (c) => c.visibility === 'Institution-Only' || c.visibility === 'Public'
-  );
-
-  const handleBookmark = (id) => {
-    setBookmarkedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+  useEffect(() => {
+    const fetchInstitutionPosts = async () => {
+      try {
+        const res = await postService.getGeneralFeed();
+        if (res.success) {
+          const formattedPosts = res.data.map(post => ({
+            id: post.id.toString(),
+            title: post.title,
+            domain: 'Computer Science',
+            subdomain: 'General',
+            topics: ['Learning'],
+            contentType: 'Article',
+            institution: `College ID: ${post.collegeId}`,
+            visibility: 'Institution-Only', // Faked for UI until backend supports it
+            imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop',
+          }));
+          setPosts(formattedPosts);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
       }
-      return newSet;
-    });
+    };
+    fetchInstitutionPosts();
+  }, []);
+
+  const handleBookmark = async (id) => {
+    try {
+      const res = await postService.upvotePost(id);
+      if (res.success) {
+        setBookmarkedIds((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(id)) newSet.delete(id);
+          else newSet.add(id);
+          return newSet;
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to upvote post');
+    }
   };
 
   return (
@@ -79,23 +108,31 @@ export function InstitutionPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {institutionContent.map((content) => (
-          <ContentThumbnail
-            key={content.id}
-            {...content}
-            isBookmarked={bookmarkedIds.has(content.id)}
-            onBookmark={() => handleBookmark(content.id)}
-          />
-        ))}
-      </div>
-
-      {institutionContent.length === 0 && (
-        <div className="text-center py-12 bg-card border border-border rounded-lg">
-          <p className="text-muted-foreground">
-            No institutional content available at this time.
-          </p>
+      {isLoading ? (
+        <div className="flex justify-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {posts.map((content) => (
+              <ContentThumbnail
+                key={content.id}
+                {...content}
+                isBookmarked={bookmarkedIds.has(content.id)}
+                onBookmark={() => handleBookmark(content.id)}
+              />
+            ))}
+          </div>
+
+          {posts.length === 0 && (
+            <div className="text-center py-12 bg-card border border-border rounded-lg">
+              <p className="text-muted-foreground">
+                No institutional content available at this time.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -12,4 +12,5 @@ public class AuthResponse {
     private Long userId;
     private Role role;
     private AccountStatus status;
+    private Long collegeId; // null for students and super admins
 }

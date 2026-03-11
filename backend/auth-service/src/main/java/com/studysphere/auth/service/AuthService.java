@@ -36,6 +36,6 @@ public class AuthService {
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name(), user.getId());
 
         // 5. Return the token and user details to the frontend
-        return new AuthResponse(token, user.getId(), user.getRole(), user.getStatus());
+        return new AuthResponse(token, user.getId(), user.getRole(), user.getStatus(), user.getCollegeId());
     }
 }

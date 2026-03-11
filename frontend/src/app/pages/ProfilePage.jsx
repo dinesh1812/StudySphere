@@ -1,13 +1,62 @@
 import { useParams } from 'react-router';
-import { Building2, BookOpen, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, BookOpen, FileText, Loader2 } from 'lucide-react';
+import { authService } from '@/api/authService';
+import { getUser } from '@/auth/auth';
+import { toast } from 'sonner';
 
 export function ProfilePage() {
-  const { username } = useParams();
+  const { id } = useParams();
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        // If id is 'me' or undefined, use the logged-in user's ID
+        let targetId = id;
+        if (!targetId || targetId === 'me') {
+          targetId = getUser()?.id;
+        }
+
+        if (targetId) {
+          const res = await authService.getUserSummary(targetId);
+          if (res.success) {
+            setProfile(res.data);
+          }
+        }
+      } catch (err) {
+        toast.error('Failed to load profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <p className="text-muted-foreground">Profile not found</p>
+      </div>
+    );
+  }
+
+  const initials = profile.fullName
+    ? profile.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'U';
 
   const contributions = [
     { title: 'Deep Learning in Medical NLP', type: 'Article', date: 'Jan 2026' },
-    { title: 'Climate Change Impact Review', type: 'Literature Review', date: 'Dec 2025' },
-    { title: 'Quantum Cryptography Discussion', type: 'Discussion', date: 'Nov 2025' },
   ];
 
   return (
@@ -15,21 +64,19 @@ export function ProfilePage() {
       {/* Profile Header */}
       <div className="bg-card border border-border rounded-lg p-8 mb-8">
         <div className="flex items-start gap-6">
-          <div className="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center text-3xl font-semibold">
-            JS
+          <div className="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center text-3xl font-semibold uppercase">
+            {initials}
           </div>
           <div className="flex-1">
             <h1 className="text-3xl font-semibold text-foreground mb-2">
-              John Doe
+              {profile.fullName || 'Unknown User'}
             </h1>
             <div className="flex items-center gap-2 text-muted-foreground mb-4">
               <Building2 className="h-4 w-4" />
-              <span>RMK Engineering College</span>
+              <span>{profile.collegeName || 'Unknown College'}</span>
             </div>
             <p className="text-foreground/80 mb-6">
-              Researcher specializing in machine learning applications in natural language
-              processing and computational linguistics. Focused on developing robust models
-              for medical text analysis.
+              {profile.role === 'COLLEGE_ADMIN' ? 'College Administration Staff' : 'Student Researcher'}
             </p>
 
             {/* Academic Interests */}
@@ -58,16 +105,16 @@ export function ProfilePage() {
             {/* Stats */}
             <div className="flex items-center gap-8 pt-6 border-t border-border">
               <div>
-                <div className="text-2xl font-semibold text-foreground">23</div>
+                <div className="text-2xl font-semibold text-foreground">{profile.postsCount}</div>
                 <div className="text-sm text-muted-foreground">Contributions</div>
               </div>
               <div>
-                <div className="text-2xl font-semibold text-foreground">156</div>
-                <div className="text-sm text-muted-foreground">Citations</div>
+                <div className="text-2xl font-semibold text-foreground">{profile.totalUpvotes}</div>
+                <div className="text-sm text-muted-foreground">Reputation</div>
               </div>
               <div>
-                <div className="text-2xl font-semibold text-foreground">8</div>
-                <div className="text-sm text-muted-foreground">Collaborations</div>
+                <div className="text-2xl font-semibold text-foreground">{profile.communitiesCount}</div>
+                <div className="text-sm text-muted-foreground">Communities</div>
               </div>
             </div>
           </div>

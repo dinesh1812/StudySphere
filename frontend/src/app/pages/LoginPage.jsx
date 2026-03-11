@@ -1,7 +1,39 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { FileText, Mail, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { authService } from '../../api/authService';
+import { toast } from 'sonner';
 
 export function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      const res = await authService.login({ email, password });
+      if (res.success) {
+        localStorage.setItem('access_token', res.data.token);
+        localStorage.setItem('user_info', JSON.stringify({
+          id: res.data.userId,
+          role: res.data.role,
+          status: res.data.status || 'ACTIVE',
+          collegeId: res.data.collegeId || null  // only set for COLLEGE_ADMIN accounts
+        }));
+        toast.success("Login successful!");
+        navigate('/');
+      } else {
+        toast.error(res.message || "Login failed");
+      }
+    } catch (err) {
+      toast.error(err.message || "An error occurred during login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -20,7 +52,7 @@ export function LoginPage() {
         <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
           <h2 className="text-2xl font-semibold text-foreground mb-6">Welcome Back</h2>
 
-          <form className="space-y-5">
+          <form className="space-y-5" onSubmit={handleLogin}>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Email Address
@@ -29,6 +61,9 @@ export function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                   placeholder="you@university.edu"
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
                 />
@@ -43,6 +78,9 @@ export function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                   placeholder="Enter your password"
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
                 />
@@ -51,9 +89,10 @@ export function LoginPage() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              disabled={isLoading}
+              className="w-full py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Sign In
+              {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>
 

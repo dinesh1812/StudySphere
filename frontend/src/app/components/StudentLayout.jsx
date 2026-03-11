@@ -1,8 +1,10 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { Search, Home, Building2, Folder, User, FileText } from 'lucide-react';
+import { getUser } from '@/auth/auth';
 
-export function RootLayout() {
+export function StudentLayout() {
   const location = useLocation();
+  const user = getUser();
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -46,7 +48,7 @@ export function RootLayout() {
 
           <div className="flex items-center gap-4">
             <Link
-              to="/profile/johndoe"
+              to={`/profile/${user?.id || 'me'}`}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <User className="h-4 w-4" />

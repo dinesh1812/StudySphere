@@ -1,6 +1,10 @@
 import { createBrowserRouter } from 'react-router';
-import { RootLayout } from '@/app/components/RootLayout';
+import { StudentLayout } from '@/app/components/StudentLayout';
+import { AdminLayout } from '@/app/components/AdminLayout';
+import { SuperAdminLayout } from '@/app/components/SuperAdminLayout';
 import { ProtectedLayout } from '@/auth/ProtectedLayout';
+import { GlobalErrorLayout } from '@/app/components/GlobalErrorLayout';
+
 import { HomePage } from '@/app/pages/HomePage';
 import { SearchPage } from '@/app/pages/SearchPage';
 import { ContentViewPage } from '@/app/pages/ContentViewPage';
@@ -9,16 +13,37 @@ import { WorkspacePage } from '@/app/pages/WorkspacePage';
 import { ProfilePage } from '@/app/pages/ProfilePage';
 import { LoginPage } from '@/app/pages/LoginPage';
 import { SignupPage } from '@/app/pages/SignupPage';
+import { AdminDashboard } from '@/app/pages/AdminDashboard';
+import { SuperAdminDashboard } from '@/app/pages/SuperAdminDashboard';
+
+import { getUser } from '@/auth/auth';
+
+function DashboardRouter() {
+  const user = getUser();
+  if (user?.role === 'SUPER_ADMIN') return <SuperAdminLayout />;
+  if (user?.role === 'COLLEGE_ADMIN') return <AdminLayout />;
+  return <StudentLayout />;
+}
+
+function RoleBasedIndex() {
+  const user = getUser();
+  if (user?.role === 'SUPER_ADMIN') return <SuperAdminDashboard />;
+  if (user?.role === 'COLLEGE_ADMIN') return <AdminDashboard />;
+  return <HomePage />;
+}
 
 export const router = createBrowserRouter([
   {
+    path: '/',
     Component: ProtectedLayout,
+    errorElement: <GlobalErrorLayout />,
     children: [
       {
         path: '/',
-        Component: RootLayout,
+        Component: DashboardRouter,
         children: [
-          { index: true, Component: HomePage },
+          // Mixed routes for all authenticated users
+          { index: true, Component: RoleBasedIndex },
           { path: 'search', Component: SearchPage },
           { path: 'content/:id', Component: ContentViewPage },
           { path: 'institution', Component: InstitutionPage },

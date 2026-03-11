@@ -17,6 +17,10 @@ public class UserCredential {
     private String email;
     private String password;
 
+    // Read-only: this column is owned by user-service. We just read it for the login response.
+    @Column(name = "college_id", insertable = false, updatable = false)
+    private Long collegeId;
+
     @Enumerated(EnumType.STRING)
     private Role role;
 

@@ -13,4 +13,5 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByEmail(String email);
     Optional <User> findByStudentId(String studentId);
     List<User> findByCollegeIdAndStatus(Long collegeId, AccountStatus status);
+    List<User> findByRoleAndStatus(com.studysphere.common.enums.Role role, AccountStatus status);
 }

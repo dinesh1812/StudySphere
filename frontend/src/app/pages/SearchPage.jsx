@@ -1,36 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ContentThumbnail } from '@/app/components/ContentThumbnail';
-import { mockContent } from '@/app/data/mockContent';
-import { Search, Filter, X } from 'lucide-react';
+import { postService } from '@/api/postService';
+import { Search, Filter, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState<string>('');
-  const [selectedContentType, setSelectedContentType] = useState<string>('');
-  const [selectedVisibility, setSelectedVisibility] = useState<string>('');
-  const [selectedInstitution, setSelectedInstitution] = useState<string>('');
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [selectedDomain, setSelectedDomain] = useState('');
+  const [selectedContentType, setSelectedContentType] = useState('');
+  const [selectedVisibility, setSelectedVisibility] = useState('');
+  const [selectedInstitution, setSelectedInstitution] = useState('');
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
   const [showFilters, setShowFilters] = useState(true);
+  const [allPosts, setAllPosts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleBookmark = (id) => {
-    setBookmarkedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+  useEffect(() => {
+    const fetchSearchFeed = async () => {
+      try {
+        const res = await postService.getGeneralFeed();
+        if (res.success) {
+          const formattedPosts = res.data.map(post => ({
+            id: post.id.toString(),
+            title: post.title,
+            domain: 'Computer Science',
+            subdomain: 'General',
+            topics: ['Learning'],
+            contentType: 'Article',
+            institution: `College ID: ${post.collegeId}`,
+            visibility: 'Public',
+            imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop',
+          }));
+          setAllPosts(formattedPosts);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
       }
-      return newSet;
-    });
+    };
+    fetchSearchFeed();
+  }, []);
+
+  const handleBookmark = async (id) => {
+    try {
+      const res = await postService.upvotePost(id);
+      if (res.success) {
+        setBookmarkedIds((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(id)) newSet.delete(id);
+          else newSet.add(id);
+          return newSet;
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to upvote post');
+    }
   };
 
-  const domains = Array.from(new Set(mockContent.map((c) => c.domain)));
+  const domains = Array.from(new Set(allPosts.map((c) => c.domain)));
   const contentTypes = ['Article', 'Discussion', 'Methodology', 'Literature Review'];
   const visibilityOptions = ['Public', 'Institution-Only', 'Private Project'];
-  const institutions = [...new Set(mockContent.map(c => c.institution))];
+  const institutions = [...new Set(allPosts.map(c => c.institution))];
 
 
-const filteredContent = mockContent.filter((content) => {
+const filteredContent = allPosts.filter((content) => {
   const matchesSearch =
     !searchQuery ||
     content.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -227,7 +261,11 @@ const filteredContent = mockContent.filter((content) => {
             </button>
           </div>
 
-          {filteredContent.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredContent.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 No results found. Try adjusting your search or filters.
