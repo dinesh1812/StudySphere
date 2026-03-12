@@ -2,7 +2,7 @@ package com.studysphere.user.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
+import com.studysphere.common.enums.Role;
 import com.studysphere.common.enums.AccountStatus;
 import com.studysphere.user.model.User;
 import java.util.Optional;
@@ -13,6 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long>{
     Optional<User> findByEmail(String email);
     Optional <User> findByStudentId(String studentId);
     List<User> findByCollegeIdAndStatus(Long collegeId, AccountStatus status);
-    List<User> findByCollegeIdAndRoleAndStatus(Long collegeId, com.studysphere.common.enums.Role role, AccountStatus status);
-    List<User> findByRoleAndStatus(com.studysphere.common.enums.Role role, AccountStatus status);
+    List<User> findByCollegeIdAndRoleAndStatus(Long collegeId, Role role, AccountStatus status);
+    List<User> findByRoleAndStatus(Role role, AccountStatus status);
 }

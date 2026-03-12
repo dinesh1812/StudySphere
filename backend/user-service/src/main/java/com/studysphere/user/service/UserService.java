@@ -151,8 +151,9 @@ public class UserService {
             }
         }
 
-        targetUser.setStatus(AccountStatus.REJECTED);
-        userRepository.save(targetUser);
+        // Instead of setting status to REJECTED, we DELETE the record.
+        // This allows the user to re-apply with the same email (fixes duplicate email bug).
+        userRepository.delete(targetUser);
     }
 
     // List all colleges (for signup dropdown)

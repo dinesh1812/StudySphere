@@ -28,15 +28,15 @@ export function LoginPage() {
         toast.error(res.message || "Login failed");
       }
     } catch (err) {
-      // Check for the specific "pending approval" message from auth-service
-      const msg = err?.message || '';
-      if (msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval') || msg.toLowerCase().includes('blocked')) {
-        toast.error('Your account is not yet approved. Please wait for admin approval before logging in.', { duration: 6000 });
-      } else if (msg.toLowerCase().includes('bad credentials') || msg.toLowerCase().includes('authentication')) {
-        toast.error('Invalid email or password.');
-      } else {
-        toast.error(msg || "An error occurred during login");
-      }
+      // Robust message extraction:
+      // 1. err.message (from our ApiResponse wrapper in axios.js response interceptor)
+      // 2. err.error (fallback for some structures)
+      // 3. err (if it's just a string)
+      const msg = err?.message || err?.error || (typeof err === 'string' ? err : "Invalid credentials or unapproved account");
+      toast.error(msg, { 
+        duration: 5000,
+        description: "Please check your credentials or contact support."
+      });
     } finally {
       setIsLoading(false);
     }

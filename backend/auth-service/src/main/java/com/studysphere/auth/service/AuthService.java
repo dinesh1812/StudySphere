@@ -25,11 +25,11 @@ public class AuthService {
 
         // 2. If it succeeds, grab the user from the database
         UserCredential user = repository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User account does not exist. Please register first."));
 
         // 3. Prevent unapproved users from getting a token
         if (!user.getStatus().name().equals("APPROVED")) {
-            throw new RuntimeException("Account is pending approval or blocked.");
+            throw new RuntimeException("Your account is pending approval or has been rejected. Please contact your administrator.");
         }
 
         // 4. Generate the JWT
