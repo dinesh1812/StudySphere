@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { FileText, Mail, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { authService } from '../../api/authService';
@@ -8,7 +8,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,25 +20,33 @@ export function LoginPage() {
           id: res.data.userId,
           role: res.data.role,
           status: res.data.status || 'ACTIVE',
-          collegeId: res.data.collegeId || null  // only set for COLLEGE_ADMIN accounts
+          collegeId: res.data.collegeId || null
         }));
         toast.success("Login successful!");
-        navigate('/');
+        window.location.href = '/';
       } else {
         toast.error(res.message || "Login failed");
       }
     } catch (err) {
-      toast.error(err.message || "An error occurred during login");
+      // Check for the specific "pending approval" message from auth-service
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval') || msg.toLowerCase().includes('blocked')) {
+        toast.error('Your account is not yet approved. Please wait for admin approval before logging in.', { duration: 6000 });
+      } else if (msg.toLowerCase().includes('bad credentials') || msg.toLowerCase().includes('authentication')) {
+        toast.error('Invalid email or password.');
+      } else {
+        toast.error(msg || "An error occurred during login");
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-2">
+          <Link to="/login" className="inline-flex items-center gap-2 mb-2">
             <FileText className="h-8 w-8 text-primary" />
             <span className="text-2xl font-semibold text-foreground">StudySphere</span>
           </Link>
@@ -48,7 +55,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Login Form */}
         <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
           <h2 className="text-2xl font-semibold text-foreground mb-6">Welcome Back</h2>
 
@@ -104,12 +110,6 @@ export function LoginPage() {
               </Link>
             </p>
           </div>
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Secure academic collaboration platform</p>
-          <p className="mt-1">Institutional email verification required</p>
         </div>
       </div>
     </div>

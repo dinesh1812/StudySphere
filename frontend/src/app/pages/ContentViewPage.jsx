@@ -2,13 +2,14 @@ import { useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { postService } from '@/api/postService';
 import { getUser } from '@/auth/auth';
-import { ArrowLeft, Building2, Calendar, User, Globe, Users, Lock, Loader2, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ContentViewPage() {
   const { id } = useParams();
   const [content, setContent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpvoting, setIsUpvoting] = useState(false);
   
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -25,15 +26,13 @@ export function ContentViewPage() {
               id: post.id.toString(),
               title: post.title,
               contentBody: post.content,
-              domain: 'Computer Science',
-              subdomain: 'General',
-              topics: ['Learning'],
-              contentType: 'Article',
-              institution: `College ID: ${post.collegeId}`,
-              visibility: 'Public',
-              imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop',
+              authorName: post.author?.fullName || 'Unknown User',
+              authorRole: post.author?.role || 'STUDENT',
+              authorId: post.author?.id,
+              collegeId: post.collegeId,
+              upvotes: post.upvotes || 0,
+              upvoted: post.upvoted || false,
               createdAt: post.createdAt,
-              authorId: post.authorId
             });
             fetchComments(post.id);
           }
@@ -58,16 +57,34 @@ export function ContentViewPage() {
     }
   };
 
+  const handleUpvote = async () => {
+    if (!content) return;
+    try {
+      setIsUpvoting(true);
+      const res = await postService.upvotePost(content.id);
+      if (res.success) {
+        setContent(prev => ({
+          ...prev,
+          upvotes: res.data.upvotes,
+          upvoted: res.data.upvoted
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to upvote post');
+    } finally {
+      setIsUpvoting(false);
+    }
+  };
+
   const handlePostComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
     try {
       setIsSubmittingComment(true);
-      const user = getUser();
       const payload = {
         postId: parseInt(id, 10),
-        authorId: parseInt(user?.id, 10) || 1,
+        // authorId is securely extracted by backend from the JWT via API Gateway
         content: newComment
       };
 
@@ -82,6 +99,13 @@ export function ContentViewPage() {
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch { return ''; }
   };
 
   if (isLoading) {
@@ -105,17 +129,6 @@ export function ContentViewPage() {
     );
   }
 
-  const getVisibilityIcon = () => {
-    switch (content.visibility) {
-      case 'Public':
-        return <Globe className="h-4 w-4" />;
-      case 'Institution-Only':
-        return <Users className="h-4 w-4" />;
-      case 'Private Project':
-        return <Lock className="h-4 w-4" />;
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
       {/* Back Button */}
@@ -129,89 +142,52 @@ export function ContentViewPage() {
 
       {/* Main Content */}
       <article className="bg-card border border-border rounded-lg overflow-hidden">
-        {/* Header Image */}
-        {content.imageUrl && (
-          <div className="aspect-[21/9] bg-muted overflow-hidden">
-            <img
-              src={content.imageUrl}
-              alt={content.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
         <div className="p-8">
-          {/* Metadata Section */}
-          <div className="mb-6">
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              <span className="inline-block px-3 py-1.5 text-sm font-medium rounded border bg-blue-100 text-blue-700 border-blue-200">
-                {content.contentType}
-              </span>
-              <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                {getVisibilityIcon()}
-                {content.visibility}
-              </span>
-            </div>
+          {/* Title */}
+          <h1 className="text-4xl font-semibold text-foreground mb-6">
+            {content.title}
+          </h1>
 
-            <h1 className="text-4xl font-semibold text-foreground mb-6">
-              {content.title}
-            </h1>
-
-            {/* Taxonomy */}
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              <span className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md font-medium">
-                {content.domain}
+          {/* Author & Metadata */}
+          <div className="flex flex-wrap items-center gap-6 pb-6 border-b border-border text-sm">
+            <Link 
+              to={`/profile/${content.authorId}`}
+              className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+            >
+              <User className="h-4 w-4" />
+              <span>{content.authorName}</span>
+              <span className="text-xs px-2 py-0.5 bg-secondary rounded-full">
+                {content.authorRole === 'COLLEGE_ADMIN' ? 'Admin' : 'Student'}
               </span>
-              <span className="text-muted-foreground">→</span>
-              <span className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md font-medium">
-                {content.subdomain}
-              </span>
-              {content.topics.length > 0 && (
-                <>
-                  <span className="text-muted-foreground">→</span>
-                  <div className="flex flex-wrap gap-2">
-                    {content.topics.map((topic, index) => (
-                      <span
-                        key={index}
-                        className="px-2.5 py-1 bg-accent text-accent-foreground text-sm rounded"
-                      >
-                        {topic}
-                      </span>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Author & Institution */}
-            <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-border text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                <span>{content.institution}</span>
-              </div>
-              <Link 
-                to={`/profile/${content.authorId}`}
-                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-              >
-                <User className="h-4 w-4" />
-                <span>Author ID: {content.authorId}</span>
-              </Link>
+            </Link>
+            {content.createdAt && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>January 15, 2026</span>
+                <span>{formatDate(content.createdAt)}</span>
               </div>
+            )}
+            <button 
+              onClick={handleUpvote}
+              disabled={isUpvoting}
+              className={`flex items-center gap-2 transition-colors ${content.upvoted ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+            >
+              <ThumbsUp className={`h-4 w-4 ${content.upvoted ? 'fill-current' : ''}`} />
+              <span>{content.upvotes} {content.upvoted ? 'Upvoted' : 'Upvote'}</span>
+            </button>
+            <div className="text-xs text-muted-foreground">
+              College #{content.collegeId}
             </div>
           </div>
 
           {/* Content Body */}
-          <div className="prose max-w-none mb-12 border-b border-border pb-8">
+          <div className="prose max-w-none my-8">
             <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {content.contentBody}
             </p>
           </div>
 
           {/* Comments Section */}
-          <div>
+          <div className="border-t border-border pt-8">
             <div className="flex items-center gap-2 mb-6">
               <MessageSquare className="h-5 w-5 text-foreground" />
               <h2 className="text-xl font-semibold text-foreground">Discussions ({comments.length})</h2>
@@ -253,7 +229,7 @@ export function ContentViewPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-foreground">User {comment.authorId}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(comment.createdAt).toLocaleDateString()}
+                        {formatDate(comment.createdAt)}
                       </span>
                     </div>
                     <p className="text-foreground/90 whitespace-pre-wrap">{comment.content}</p>

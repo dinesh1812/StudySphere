@@ -21,7 +21,16 @@ public class UserController {
 
     // SUPER ADMIN ONLY: Create a new college
     @PostMapping("/colleges")
-    public ResponseEntity<ApiResponse<College>> createCollege(@RequestParam String name, @RequestParam String domain) {
+    public ResponseEntity<ApiResponse<College>> createCollege(
+            @RequestParam String name, 
+            @RequestParam String domain,
+            @RequestHeader("X-User-Role") String role) {
+            
+        // Security Check: Only Super Admins can provision colleges
+        if (!"SUPER_ADMIN".equals(role)) {
+            return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only Super Admins can create colleges.", null));
+        }
+        
         College createdCollege = userService.createCollege(name, domain);
         return ResponseEntity.ok(new ApiResponse<>(true, "College created successfully.", createdCollege));
     }
@@ -41,14 +50,24 @@ public class UserController {
     }
 
     // Unified Approval Endpoint: Super Admin approves C-Admins, C-Admins approve Students
-    // IDOR FIX: Now explicitly requires the adminId parameter
+    // SECURITY FIX: Now uses the trusted X-User-Id header injected by the API Gateway instead of a spoofable request param
     @PutMapping("/approve/{userId}")
     public ResponseEntity<ApiResponse<Void>> approveUser(
             @PathVariable Long userId, 
-            @RequestParam Long adminId) { 
+            @RequestHeader("X-User-Id") Long trustedAdminId) { 
         
-        userService.approveUser(userId, adminId);
+        userService.approveUser(userId, trustedAdminId);
         return ResponseEntity.ok(new ApiResponse<>(true, "User approved successfully.", null));
+    }
+
+    // Reject a user (Super Admin rejects C-Admins, C-Admins reject Students)
+    @PutMapping("/reject/{userId}")
+    public ResponseEntity<ApiResponse<Void>> rejectUser(
+            @PathVariable Long userId,
+            @RequestHeader("X-User-Id") Long trustedAdminId) {
+
+        userService.rejectUser(userId, trustedAdminId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "User rejected successfully.", null));
     }
 
     @GetMapping("/{id}/summary")
@@ -69,5 +88,26 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<User>>> getPendingStudents(@PathVariable Long collegeId) {
         List<User> pending = userService.getPendingStudentsForCollege(collegeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending students fetched", pending));
+    }
+
+    // College Admin: list approved students in their college
+    @GetMapping("/colleges/{collegeId}/approved-students")
+    public ResponseEntity<ApiResponse<List<User>>> getApprovedStudents(@PathVariable Long collegeId) {
+        List<User> approved = userService.getApprovedStudentsForCollege(collegeId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Approved students fetched", approved));
+    }
+
+    // Super Admin: list all approved college admins
+    @GetMapping("/approved-admins")
+    public ResponseEntity<ApiResponse<List<User>>> getApprovedCollegeAdmins() {
+        List<User> approved = userService.getApprovedCollegeAdmins();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Approved admins fetched", approved));
+    }
+
+    // Public: list all colleges (for signup dropdown)
+    @GetMapping("/colleges/all")
+    public ResponseEntity<ApiResponse<List<College>>> getAllColleges() {
+        List<College> colleges = userService.getAllColleges();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Colleges fetched", colleges));
     }
 }

@@ -10,6 +10,7 @@ import com.studysphere.post.model.Comment;
 import com.studysphere.post.model.Post;
 import com.studysphere.post.repository.CommentRepository;
 import com.studysphere.post.repository.PostRepository;
+import com.studysphere.post.repository.PostUpvoteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,18 +23,23 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final PostUpvoteRepository postUpvoteRepository;
     private final UserClient userClient; 
 
     // --- PRIVATE HELPER METHOD FOR DATA AGGREGATION ---
-    private PostResponse mapToPostResponse(Post post) {
+    private PostResponse mapToPostResponse(Post post, Long currentUserId) {
         PostResponse response = new PostResponse();
         response.setId(post.getId());
         response.setTitle(post.getTitle());
         response.setContent(post.getContent());
         response.setCollegeId(post.getCollegeId());
-        response.setCommunityId(post.getCommunityId()); // BUG FIXED: Community ID is now mapped
+        response.setCommunityId(post.getCommunityId()); 
         response.setUpvotes(post.getUpvotes());
         response.setCreatedAt(post.getCreatedAt());
+
+        if (currentUserId != null) {
+            response.setUpvoted(postUpvoteRepository.existsByPostIdAndUserId(post.getId(), currentUserId));
+        }
 
         try {
             // SECURE INTERNAL CALL: Fetch the author's details from the user-service
@@ -63,28 +69,43 @@ public class PostService {
         post.setCommunityId(request.getCommunityId()); 
         
         Post savedPost = postRepository.save(post);
-        return mapToPostResponse(savedPost);
+        return mapToPostResponse(savedPost, request.getAuthorId());
     }
 
     // 2. FETCH GENERAL FEED 
-    public List<PostResponse> getGeneralFeed() {
+    public List<PostResponse> getGeneralFeed(Long userId) {
         List<Post> posts = postRepository.findByCommunityIdIsNullOrderByCreatedAtDesc();
-        return posts.stream().map(this::mapToPostResponse).collect(Collectors.toList());
+        return posts.stream().map(p -> this.mapToPostResponse(p, userId)).collect(Collectors.toList());
     }
 
     // 3. FETCH COMMUNITY FEED 
-    public List<PostResponse> getCommunityFeed(Long communityId) {
+    public List<PostResponse> getCommunityFeed(Long communityId, Long userId) {
         List<Post> posts = postRepository.findByCommunityIdOrderByCreatedAtDesc(communityId);
-        return posts.stream().map(this::mapToPostResponse).collect(Collectors.toList());
+        return posts.stream().map(p -> this.mapToPostResponse(p, userId)).collect(Collectors.toList());
     }
 
-    // 4. UPVOTE POST (BUG FIXED: Now returns PostResponse)
-    public PostResponse upvotePost(Long postId) {
+    // 4. UPVOTE POST (TOGGLE LOGIC)
+    public PostResponse upvotePost(Long postId, Long userId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
-        post.setUpvotes(post.getUpvotes() + 1);
+        
+        var existingUpvote = postUpvoteRepository.findByPostIdAndUserId(postId, userId);
+        
+        if (existingUpvote.isPresent()) {
+            // User already upvoted, so UN-UPVOTE (toggle off)
+            postUpvoteRepository.delete(existingUpvote.get());
+            post.setUpvotes(Math.max(0, post.getUpvotes() - 1));
+        } else {
+            // User NOT upvoted yet, so UPVOTE (toggle on)
+            com.studysphere.post.model.PostUpvote newUpvote = new com.studysphere.post.model.PostUpvote();
+            newUpvote.setPostId(postId);
+            newUpvote.setUserId(userId);
+            postUpvoteRepository.save(newUpvote);
+            post.setUpvotes(post.getUpvotes() + 1);
+        }
+        
         Post savedPost = postRepository.save(post);
-        return mapToPostResponse(savedPost); 
+        return mapToPostResponse(savedPost, userId); 
     }
 
     // 5. ADD COMMENT

@@ -9,4 +9,5 @@ import com.studysphere.user.model.College;
 @Repository
 public interface CollegeRepository extends JpaRepository<College, Long> {
     Optional<College> findByDomain(String domain);
+    Optional<College> findByNameIgnoreCase(String name);
 }

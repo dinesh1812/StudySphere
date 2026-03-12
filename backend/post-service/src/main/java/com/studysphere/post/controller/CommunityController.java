@@ -18,14 +18,23 @@ public class CommunityController {
     private final CommunityService communityService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Community>> createCommunity(@RequestBody CommunityRequest request) {
+    public ResponseEntity<ApiResponse<Community>> createCommunity(
+            @RequestBody CommunityRequest request,
+            @RequestHeader("X-User-Id") Long trustedAuthorId) {
+            
+        // SECURITY FIX (IDOR): Force the authorId
+        request.setAuthorId(trustedAuthorId);
+        
         Community community = communityService.createCommunity(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Community created", community));
     }
 
     @PostMapping("/{communityId}/join")
-    public ResponseEntity<ApiResponse<String>> joinCommunity(@PathVariable Long communityId, @RequestParam Long studentId) {
-        String message = communityService.joinCommunity(communityId, studentId);
+    public ResponseEntity<ApiResponse<String>> joinCommunity(
+            @PathVariable Long communityId, 
+            @RequestHeader("X-User-Id") Long trustedStudentId) {
+            
+        String message = communityService.joinCommunity(communityId, trustedStudentId);
         return ResponseEntity.ok(new ApiResponse<>(true, message, null));
     }
     

@@ -51,7 +51,7 @@ export function WorkspacePage() {
       const payload = {
         title: postData.title,
         content: postData.content,
-        authorId: parseInt(user?.id, 10) || 1, // Fallback to 1 if not found
+        // authorId is no longer sent, backend securely extracts it from JWT via X-User-Id
         collegeId: parseInt(user?.collegeId, 10) || 1,
         communityId: null // General Feed
       };
@@ -81,8 +81,8 @@ export function WorkspacePage() {
       const user = getUser();
       const res = await communityService.createCommunity({
         name: teamData.name,
-        description: teamData.description,
-        authorId: parseInt(user?.id, 10) || 1
+        description: teamData.description
+        // authorId is no longer sent, backend securely extracts it from JWT via X-User-Id
       });
       if (res.success) {
         toast.success("Research Team created!");
@@ -119,7 +119,7 @@ export function WorkspacePage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <button 
           onClick={() => setIsCreatingTeam(true)}
           className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors text-left group"
@@ -143,16 +143,6 @@ export function WorkspacePage() {
           </h3>
           <p className="text-sm text-muted-foreground">
             Start writing a new research article
-          </p>
-        </button>
-
-        <button className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors text-left group">
-          <FolderOpen className="h-8 w-8 text-primary mb-3" />
-          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-            Cross-Institution Project
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Collaborate across universities
           </p>
         </button>
       </div>

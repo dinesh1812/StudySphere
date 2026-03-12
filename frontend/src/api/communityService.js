@@ -5,10 +5,9 @@ export const communityService = {
     return await apiClient.post('/communities', communityData);
   },
 
-  joinCommunity: async (communityId, studentId) => {
-    return await apiClient.post(`/communities/${communityId}/join`, null, {
-      params: { studentId }
-    });
+  joinCommunity: async (communityId) => {
+    // studentId is now securely extracted by backend from the JWT via X-User-Id header
+    return await apiClient.post(`/communities/${communityId}/join`);
   },
 
   getAllCommunities: async () => {

@@ -15,4 +15,7 @@ public class PostResponse {
     
     // The aggregated data from the user-service!
     private UserSummaryDto author; 
+
+    // Whether the current user has upvoted this post
+    private boolean upvoted;
 }

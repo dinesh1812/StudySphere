@@ -14,6 +14,7 @@ public class RouteValidator {
             "/api/auth/login",
             "/api/users/register/student",
             "/api/users/register/admin",
+            "/api/users/colleges/all",
             "/eureka"
     );
 

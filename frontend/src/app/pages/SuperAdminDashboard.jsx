@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Users, FileText, CheckCircle2, X, Clock, RefreshCw } from 'lucide-react';
+import { Building2, Users, CheckCircle2, X, Clock, RefreshCw, UserCheck } from 'lucide-react';
 import { adminService } from '@/api/adminService';
 import { toast } from 'sonner';
 
@@ -10,25 +10,43 @@ export function SuperAdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newInstitution, setNewInstitution] = useState({ name: '', domain: '' });
 
-  // ——— Pending admins approval state ———
   const [pendingAdmins, setPendingAdmins] = useState([]);
   const [isLoadingPending, setIsLoadingPending] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+
+  // ——— Approved admins state ———
+  const [approvedAdmins, setApprovedAdmins] = useState([]);
+  const [isLoadingApproved, setIsLoadingApproved] = useState(true);
+
+  const fetchInstitutions = useCallback(async () => {
+    const res = await adminService.getAllColleges();
+    if (res.success) {
+      setInstitutions(res.data.map(c => ({ id: c.id, name: c.name, status: 'Active' })));
+    }
+  }, []);
 
   const fetchPendingAdmins = useCallback(async () => {
     setIsLoadingPending(true);
     const res = await adminService.getPendingCollegeAdmins();
-    if (res.success) {
-      setPendingAdmins(res.data);
-    } else {
-      toast.error('Could not fetch pending admins: ' + res.message);
-    }
+    if (res.success) setPendingAdmins(res.data);
+    else toast.error('Could not fetch pending admins: ' + res.message);
     setIsLoadingPending(false);
   }, []);
 
+  const fetchApprovedAdmins = useCallback(async () => {
+    setIsLoadingApproved(true);
+    const res = await adminService.getApprovedCollegeAdmins();
+    if (res.success) setApprovedAdmins(res.data);
+    else toast.error('Could not fetch approved admins: ' + res.message);
+    setIsLoadingApproved(false);
+  }, []);
+
   useEffect(() => {
+    fetchInstitutions();
     fetchPendingAdmins();
-  }, [fetchPendingAdmins]);
+    fetchApprovedAdmins();
+  }, [fetchInstitutions, fetchPendingAdmins, fetchApprovedAdmins]);
 
   // ——— Handle Provision Institution ———
   const handleAddInstitution = async (e) => {
@@ -63,10 +81,24 @@ export function SuperAdminDashboard() {
     if (res.success) {
       toast.success(`${adminName} has been approved as a College Admin.`);
       setPendingAdmins(prev => prev.filter(u => u.id !== userId));
+      fetchApprovedAdmins(); // Refresh approved list
     } else {
       toast.error(res.message || 'Approval failed.');
     }
     setApprovingId(null);
+  };
+
+  const handleRejectAdmin = async (userId, adminName) => {
+    if (!window.confirm(`Are you sure you want to reject ${adminName}?`)) return;
+    setRejectingId(userId);
+    const res = await adminService.rejectUser(userId);
+    if (res.success) {
+      toast.success(`${adminName} registration has been rejected.`);
+      setPendingAdmins(prev => prev.filter(u => u.id !== userId));
+    } else {
+      toast.error(res.message || 'Rejection failed.');
+    }
+    setRejectingId(null);
   };
 
   return (
@@ -77,10 +109,11 @@ export function SuperAdminDashboard() {
       </div>
 
       {/* Stats — only show data we actually have from the backend */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {[
           { label: 'Provisioned Institutions', value: institutions.length, icon: Building2, color: 'text-primary bg-primary/10' },
           { label: 'Pending Admin Approvals', value: pendingAdmins.length, icon: Clock, color: pendingAdmins.length > 0 ? 'text-orange-500 bg-orange-500/10' : 'text-green-500 bg-green-500/10' },
+          { label: 'Approved Admins', value: approvedAdmins.length, icon: UserCheck, color: 'text-green-500 bg-green-500/10' },
         ].map(stat => (
           <div key={stat.label} className="p-5 bg-card border border-border rounded-lg shadow-sm">
             <div className="flex items-center gap-3">
@@ -143,6 +176,13 @@ export function SuperAdminDashboard() {
                       >
                         {approvingId === admin.id ? 'Approving...' : 'Approve'}
                       </button>
+                      <button
+                        onClick={() => handleRejectAdmin(admin.id, admin.fullName)}
+                        disabled={rejectingId === admin.id || approvingId === admin.id}
+                        className="px-4 py-1.5 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground text-xs font-semibold rounded-md transition-colors disabled:opacity-50 ml-2"
+                      >
+                        {rejectingId === admin.id ? 'Rejecting...' : 'Reject'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -195,6 +235,55 @@ export function SuperAdminDashboard() {
         </div>
       </div>
 
+      {/* ——— Approved College Admins ——— */}
+      <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-border flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Approved College Admins</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">College administrators who have been approved and are active.</p>
+          </div>
+          <button
+            onClick={fetchApprovedAdmins}
+            className="p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          {isLoadingApproved ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Loading approved admins...</div>
+          ) : approvedAdmins.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No approved college admins yet.
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-muted text-muted-foreground text-xs uppercase tracking-wider">
+                  <th className="px-6 py-3 font-medium">Name</th>
+                  <th className="px-6 py-3 font-medium">Email</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {approvedAdmins.map(admin => (
+                  <tr key={admin.id} className="hover:bg-muted/40 transition-colors">
+                    <td className="px-6 py-4 font-medium text-foreground">{admin.fullName}</td>
+                    <td className="px-6 py-4 text-muted-foreground text-sm">{admin.email}</td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 border border-green-200">
+                        Approved
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
       {/* ——— Add Institution Modal ——— */}
       {isAddingInstitution && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -234,11 +323,11 @@ export function SuperAdminDashboard() {
                 <p className="mt-1.5 text-xs text-muted-foreground">Used for verifying student institutional emails.</p>
               </div>
 
-              <div className="pt-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
+              {/* <div className="pt-2 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
                 <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
                   📋 After provisioning, share the generated <strong>College ID</strong> with the College Representative so they can register.
                 </p>
-              </div>
+              </div> */}
 
               <div className="flex justify-end gap-3 pt-2">
                 <button

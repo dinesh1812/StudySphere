@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -41,6 +42,22 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             // 5. Validate the token mathematically against the secret key
             try {
                 jwtUtil.validateToken(token);
+                
+                // --- CRITICAL IDOR & PRIVILEGE ESCALATION FIX ---
+                // Industry Standard: Extract identity at the gateway and inject as trusted X-Headers
+                String userId = jwtUtil.extractUserId(token);
+                String role = jwtUtil.extractRole(token);
+                
+                // Mutate the request to add these trusted headers
+                ServerHttpRequest request = exchange.getRequest()
+                        .mutate()
+                        .header("X-User-Id", userId)
+                        .header("X-User-Role", role)
+                        .build();
+                        
+                // Pass the mutated request to the next filter in the chain
+                return chain.filter(exchange.mutate().request(request).build());
+                
             } catch (Exception e) {
                 // If token is expired or forged, reject the request immediately
                 exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
@@ -48,7 +65,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             }
         }
         
-        // 6. If everything is good, let the request pass through to the microservices
+        // 6. If everything is good (and it didn't require auth), let the request pass through
         return chain.filter(exchange);
     }
 

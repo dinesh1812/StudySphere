@@ -6,6 +6,7 @@ import { ProtectedLayout } from '@/auth/ProtectedLayout';
 import { GlobalErrorLayout } from '@/app/components/GlobalErrorLayout';
 
 import { HomePage } from '@/app/pages/HomePage';
+import { CommunityPage } from '@/app/pages/CommunityPage';
 import { SearchPage } from '@/app/pages/SearchPage';
 import { ContentViewPage } from '@/app/pages/ContentViewPage';
 import { InstitutionPage } from '@/app/pages/InstitutionPage';
@@ -42,8 +43,8 @@ export const router = createBrowserRouter([
         path: '/',
         Component: DashboardRouter,
         children: [
-          // Mixed routes for all authenticated users
           { index: true, Component: RoleBasedIndex },
+          { path: 'community', Component: CommunityPage },
           { path: 'search', Component: SearchPage },
           { path: 'content/:id', Component: ContentViewPage },
           { path: 'institution', Component: InstitutionPage },

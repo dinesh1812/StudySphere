@@ -102,7 +102,8 @@ public class UserService {
     public UserSummaryDto getUserSummary(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name());
+        String collegeName = user.getCollege() != null ? user.getCollege().getName() : "N/A";
+        return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name(), collegeName);
     }
 
     // List all pending College Admins - called by Super Admin
@@ -111,7 +112,51 @@ public class UserService {
     }
 
     // List all pending Students in a college - called by College Admin
+    // BUG FIX: Filter by STUDENT role to exclude COLLEGE_ADMINs from the same college
     public List<User> getPendingStudentsForCollege(Long collegeId) {
-        return userRepository.findByCollegeIdAndStatus(collegeId, AccountStatus.PENDING);
+        return userRepository.findByCollegeIdAndRoleAndStatus(collegeId, Role.STUDENT, AccountStatus.PENDING);
+    }
+
+    // List all approved Students in a college - called by College Admin
+    // BUG FIX: Filter by STUDENT role to exclude COLLEGE_ADMINs from the same college
+    public List<User> getApprovedStudentsForCollege(Long collegeId) {
+        return userRepository.findByCollegeIdAndRoleAndStatus(collegeId, Role.STUDENT, AccountStatus.APPROVED);
+    }
+
+    // List all approved College Admins - called by Super Admin
+    public List<User> getApprovedCollegeAdmins() {
+        return userRepository.findByRoleAndStatus(Role.COLLEGE_ADMIN, AccountStatus.APPROVED);
+    }
+
+    // Reject a user (set status to REJECTED)
+    public void rejectUser(Long targetUserId, Long adminId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new RuntimeException("Admin not found."));
+
+        if (admin.getRole() != Role.COLLEGE_ADMIN && admin.getRole() != Role.SUPER_ADMIN) {
+            throw new RuntimeException("Unauthorized: Only administrators can reject users.");
+        }
+
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("User to reject not found."));
+
+        // College Admins can only reject Students from their own college
+        if (admin.getRole() == Role.COLLEGE_ADMIN) {
+            if (targetUser.getRole() != Role.STUDENT) {
+                throw new RuntimeException("Security Violation: College Admins can only reject students.");
+            }
+            if (admin.getCollege() == null || targetUser.getCollege() == null ||
+                !admin.getCollege().getId().equals(targetUser.getCollege().getId())) {
+                throw new RuntimeException("Security Violation: You can only reject students from your own college.");
+            }
+        }
+
+        targetUser.setStatus(AccountStatus.REJECTED);
+        userRepository.save(targetUser);
+    }
+
+    // List all colleges (for signup dropdown)
+    public List<College> getAllColleges() {
+        return collegeRepository.findAll();
     }
 }

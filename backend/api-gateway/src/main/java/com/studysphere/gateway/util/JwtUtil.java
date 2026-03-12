@@ -18,6 +18,18 @@ public class JwtUtil {
         Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token);
     }
 
+    public io.jsonwebtoken.Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token).getBody();
+    }
+
+    public String extractUserId(String token) {
+        return extractAllClaims(token).get("userId").toString();
+    }
+
+    public String extractRole(String token) {
+        return extractAllClaims(token).get("role").toString();
+    }
+
     private Key getSignKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secret);
         return Keys.hmacShaKeyFor(keyBytes);

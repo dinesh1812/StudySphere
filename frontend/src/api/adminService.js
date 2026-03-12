@@ -1,5 +1,4 @@
 import apiClient from './axios';
-import { getUser } from '../auth/auth';
 
 export const adminService = {
   createCollege: async (name, domain) => {
@@ -9,10 +8,7 @@ export const adminService = {
       });
       return { success: true, data: response.data };
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Failed to create college'
-      };
+      return { success: false, message: error.message || 'Failed to create college' };
     }
   },
 
@@ -25,15 +21,30 @@ export const adminService = {
     }
   },
 
+  getApprovedCollegeAdmins: async () => {
+    try {
+      const response = await apiClient.get('/users/approved-admins');
+      return { success: true, data: response.data || [] };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to fetch approved admins', data: [] };
+    }
+  },
+
   approveUser: async (targetUserId) => {
     try {
-      const user = getUser();
-      const response = await apiClient.put(`/users/approve/${targetUserId}`, null, {
-        params: { adminId: user.id }
-      });
+      const response = await apiClient.put(`/users/approve/${targetUserId}`);
       return { success: true, message: response.message };
     } catch (error) {
       return { success: false, message: error.message || 'Failed to approve user' };
+    }
+  },
+
+  rejectUser: async (targetUserId) => {
+    try {
+      const response = await apiClient.put(`/users/reject/${targetUserId}`);
+      return { success: true, message: response.message };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to reject user' };
     }
   },
 
@@ -43,6 +54,24 @@ export const adminService = {
       return { success: true, data: response.data || [] };
     } catch (error) {
       return { success: false, message: error.message || 'Failed to fetch pending students', data: [] };
+    }
+  },
+
+  getApprovedStudents: async (collegeId) => {
+    try {
+      const response = await apiClient.get(`/users/colleges/${collegeId}/approved-students`);
+      return { success: true, data: response.data || [] };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to fetch approved students', data: [] };
+    }
+  },
+
+  getAllColleges: async () => {
+    try {
+      const response = await apiClient.get('/users/colleges/all');
+      return { success: true, data: response.data || [] };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to fetch colleges', data: [] };
     }
   }
 };
