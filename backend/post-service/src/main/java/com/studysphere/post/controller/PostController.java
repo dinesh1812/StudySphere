@@ -31,6 +31,14 @@ public class PostController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Post created successfully", post));
     }
 
+    @GetMapping("/{postId}")
+    public ResponseEntity<ApiResponse<PostResponse>> getPost(
+            @PathVariable Long postId,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        PostResponse post = postService.getPostById(postId, userId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post fetched successfully", post));
+    }
+
     @GetMapping("/general")
     public ResponseEntity<ApiResponse<List<PostResponse>>> getGeneralFeed(
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {

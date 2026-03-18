@@ -13,6 +13,10 @@ export const postService = {
     return await apiClient.get(`/posts/community/${communityId}`);
   },
 
+  getPost: async (postId) => {
+    return await apiClient.get(`/posts/${postId}`);
+  },
+
   upvotePost: async (postId) => {
     return await apiClient.put(`/posts/${postId}/upvote`);
   },

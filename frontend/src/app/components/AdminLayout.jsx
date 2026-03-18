@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-import { Users, Building2, User, LogOut, Shield } from 'lucide-react';
+import { Users, Building2, User, LogOut, Shield, Calendar } from 'lucide-react';
 import { getUser, logout } from '@/auth/auth';
 
 export function AdminLayout() {
@@ -8,6 +8,7 @@ export function AdminLayout() {
 
   const navItems = [
     { path: '/', label: 'Student Approvals', icon: Users },
+    { path: '/events', label: 'Events Management', icon: Calendar },
   ];
 
   const initials = user?.fullName

@@ -1,8 +1,9 @@
 import { useParams, Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { postService } from '@/api/postService';
+import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
-import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ContentViewPage() {
@@ -14,27 +15,31 @@ export function ContentViewPage() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [communityName, setCommunityName] = useState('');
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const res = await postService.getGeneralFeed();
+        const res = await postService.getPost(id);
         if (res.success) {
-          const post = res.data.find(p => p.id.toString() === id);
-          if (post) {
-            setContent({
-              id: post.id.toString(),
-              title: post.title,
-              contentBody: post.content,
-              authorName: post.author?.fullName || 'Unknown User',
-              authorRole: post.author?.role || 'STUDENT',
-              authorId: post.author?.id,
-              collegeId: post.collegeId,
-              upvotes: post.upvotes || 0,
-              upvoted: post.upvoted || false,
-              createdAt: post.createdAt,
-            });
-            fetchComments(post.id);
+          const post = res.data;
+          setContent({
+            id: post.id.toString(),
+            title: post.title,
+            contentBody: post.content,
+            authorName: post.author?.fullName || 'Unknown User',
+            authorRole: post.author?.role || 'STUDENT',
+            authorId: post.author?.id,
+            collegeId: post.collegeId,
+            communityId: post.communityId,
+            upvotes: post.upvotes || 0,
+            upvoted: post.upvoted || false,
+            createdAt: post.createdAt,
+          });
+          fetchComments(post.id);
+          
+          if (post.communityId) {
+            fetchCommunityName(post.communityId);
           }
         }
       } catch (err) {
@@ -54,6 +59,18 @@ export function ContentViewPage() {
       }
     } catch (err) {
       console.error("Failed to load comments");
+    }
+  };
+
+  const fetchCommunityName = async (communityId) => {
+    try {
+      const res = await communityService.getAllCommunities();
+      if (res.success) {
+        const comm = res.data.find(c => c.id === communityId);
+        if (comm) setCommunityName(comm.name);
+      }
+    } catch (err) {
+      console.error("Failed to load community name");
     }
   };
 
@@ -177,6 +194,15 @@ export function ContentViewPage() {
             <div className="text-xs text-muted-foreground">
               College #{content.collegeId}
             </div>
+            {communityName && (
+              <Link 
+                to={`/community/${content.communityId}`}
+                className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+              >
+                <Users className="h-3 w-3" />
+                <span>In Community: {communityName}</span>
+              </Link>
+            )}
           </div>
 
           {/* Content Body */}

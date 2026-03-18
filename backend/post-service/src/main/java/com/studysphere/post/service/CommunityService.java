@@ -8,6 +8,7 @@ import com.studysphere.post.repository.CommunityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
@@ -17,6 +18,7 @@ public class CommunityService {
     private final CommunityRepository communityRepository;
     private final CommunityMemberRepository communityMemberRepository;
 
+    @Transactional
     public Community createCommunity(CommunityRequest request) {
         if (communityRepository.existsByName(request.getName())) {
             throw new RuntimeException("A community with this name already exists.");
@@ -30,12 +32,16 @@ public class CommunityService {
         // Save the community
         Community savedCommunity = communityRepository.save(community);
 
-        // Automatically add the creator as the first member!
-        joinCommunity(savedCommunity.getId(), request.getAuthorId());
+        // Directly add creator as the first member (more robust)
+        CommunityMember member = new CommunityMember();
+        member.setCommunityId(savedCommunity.getId());
+        member.setStudentId(request.getAuthorId());
+        communityMemberRepository.save(member);
 
         return savedCommunity;
     }
 
+    @Transactional
     public String joinCommunity(Long communityId, Long studentId) {
         Community community = communityRepository.findById(communityId)
                 .orElseThrow(() -> new RuntimeException("Community not found."));
@@ -54,5 +60,17 @@ public class CommunityService {
     
     public List<Community> getAllCommunities() {
         return communityRepository.findAll();
+    }
+
+    public List<Long> getJoinedCommunityIds(Long studentId) {
+        return communityMemberRepository.findCommunityIdsByStudentId(studentId);
+    }
+
+    @Transactional
+    public void leaveCommunity(Long communityId, Long studentId) {
+        if (!communityMemberRepository.existsByCommunityIdAndStudentId(communityId, studentId)) {
+            throw new RuntimeException("You are not a member of this community.");
+        }
+        communityMemberRepository.deleteByCommunityIdAndStudentId(communityId, studentId);
     }
 }

@@ -31,6 +31,9 @@ public class GatewayRoutingConfig {
                 // 4. Community Operations (Forwarded to Post Service)
                 .route("community-routes", r -> r.path("/api/communities/**")
                         .uri("lb://post-service"))
+		// 5. Global Events (Forwarded to Post Service)
+                .route("event-routes", r -> r.path("/api/events/**")
+                        .uri("lb://post-service"))
                 
                 .build();
     }

@@ -72,6 +72,13 @@ public class PostService {
         return mapToPostResponse(savedPost, request.getAuthorId());
     }
 
+    // NEW: Fetch a single post by ID
+    public PostResponse getPostById(Long postId, Long currentUserId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        return mapToPostResponse(post, currentUserId);
+    }
+
     // 2. FETCH GENERAL FEED 
     public List<PostResponse> getGeneralFeed(Long userId) {
         List<Post> posts = postRepository.findByCommunityIdIsNullOrderByCreatedAtDesc();

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-import { Home, Search, Building2, Folder, User, LogOut, Users, FileText } from 'lucide-react';
+import { Home, Search, Building2, Folder, User, LogOut, Users, FileText, Calendar } from 'lucide-react';
 import { getUser, logout } from '@/auth/auth';
 
 export function StudentLayout() {
@@ -11,6 +11,7 @@ export function StudentLayout() {
     { path: '/community', label: 'Community', icon: Users },
     { path: '/workspace', label: 'Workspace', icon: Folder },
     { path: '/institution', label: 'My Institution', icon: Building2 },
+    { path: '/events', label: 'Events Hub', icon: Calendar },
     { path: '/search', label: 'Search', icon: Search },
   ];
 

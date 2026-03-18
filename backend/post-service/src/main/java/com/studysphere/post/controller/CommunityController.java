@@ -42,4 +42,17 @@ public class CommunityController {
     public ResponseEntity<ApiResponse<List<Community>>> getAllCommunities() {
         return ResponseEntity.ok(new ApiResponse<>(true, "Communities fetched", communityService.getAllCommunities()));
     }
+
+    @GetMapping("/joined")
+    public ResponseEntity<ApiResponse<List<Long>>> getJoinedCommunities(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Joined communities fetched", communityService.getJoinedCommunityIds(userId)));
+    }
+
+    @DeleteMapping("/{communityId}/leave")
+    public ResponseEntity<ApiResponse<String>> leaveCommunity(
+            @PathVariable Long communityId,
+            @RequestHeader("X-User-Id") Long trustedStudentId) {
+        communityService.leaveCommunity(communityId, trustedStudentId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Successfully left community", null));
+    }
 }

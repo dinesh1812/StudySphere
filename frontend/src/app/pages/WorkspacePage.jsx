@@ -1,11 +1,13 @@
 import { Plus, Users, Lock, FileText, FolderOpen, X, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
 import { toast } from 'sonner';
 
 export function WorkspacePage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
@@ -189,7 +191,10 @@ export function WorkspacePage() {
                     </span>
                   </div>
                 </div>
-                <button className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-md transition-colors">
+                <button 
+                  onClick={() => navigate(`/community/${project.id}`)}
+                  className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
+                >
                   Open
                 </button>
               </div>

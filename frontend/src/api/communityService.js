@@ -12,5 +12,13 @@ export const communityService = {
 
   getAllCommunities: async () => {
     return await apiClient.get('/communities');
+  },
+
+  getJoinedCommunityIds: async () => {
+    return await apiClient.get('/communities/joined');
+  },
+
+  leaveCommunity: async (communityId) => {
+    return await apiClient.delete(`/communities/${communityId}/leave`);
   }
 };

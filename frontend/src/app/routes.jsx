@@ -11,11 +11,14 @@ import { SearchPage } from '@/app/pages/SearchPage';
 import { ContentViewPage } from '@/app/pages/ContentViewPage';
 import { InstitutionPage } from '@/app/pages/InstitutionPage';
 import { WorkspacePage } from '@/app/pages/WorkspacePage';
+import { AdminEventsPage } from '@/app/pages/AdminEventsPage';
+import { StudentEventsPage } from '@/app/pages/StudentEventsPage';
 import { ProfilePage } from '@/app/pages/ProfilePage';
 import { LoginPage } from '@/app/pages/LoginPage';
 import { SignupPage } from '@/app/pages/SignupPage';
 import { AdminDashboard } from '@/app/pages/AdminDashboard';
 import { SuperAdminDashboard } from '@/app/pages/SuperAdminDashboard';
+import { CommunityFeedPage } from '@/app/pages/CommunityFeedPage';
 
 import { getUser } from '@/auth/auth';
 
@@ -45,10 +48,15 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: RoleBasedIndex },
           { path: 'community', Component: CommunityPage },
+          { path: 'community/:id', Component: CommunityFeedPage },
           { path: 'search', Component: SearchPage },
           { path: 'content/:id', Component: ContentViewPage },
           { path: 'institution', Component: InstitutionPage },
           { path: 'workspace', Component: WorkspacePage },
+          { path: 'events', Component: () => {
+            const user = getUser();
+            return user?.role === 'COLLEGE_ADMIN' ? <AdminEventsPage /> : <StudentEventsPage />;
+          }},
           { path: 'profile/:username', Component: ProfilePage },
         ],
       },

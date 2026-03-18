@@ -1,26 +1,32 @@
 import { useState, useEffect } from 'react';
 import { communityService } from '@/api/communityService';
-import { Users, Loader2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Users, Loader2, Plus, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function CommunityPage() {
   const [communities, setCommunities] = useState([]);
+  const [joinedCommunityIds, setJoinedCommunityIds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchCommunities = async () => {
+    const fetchData = async () => {
       try {
-        const res = await communityService.getAllCommunities();
-        if (res.success) {
-          setCommunities(res.data);
-        }
+        const [commRes, joinedRes] = await Promise.all([
+          communityService.getAllCommunities(),
+          communityService.getJoinedCommunityIds()
+        ]);
+        
+        if (commRes.success) setCommunities(commRes.data);
+        if (joinedRes.success) setJoinedCommunityIds(joinedRes.data);
       } catch (err) {
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchCommunities();
+    fetchData();
   }, []);
 
   const handleJoin = async (communityId) => {
@@ -28,6 +34,7 @@ export function CommunityPage() {
       const res = await communityService.joinCommunity(communityId);
       if (res.success) {
         toast.success('Successfully joined community!');
+        setJoinedCommunityIds([...joinedCommunityIds, communityId]);
       }
     } catch (err) {
       toast.error('Failed to join community');
@@ -73,12 +80,28 @@ export function CommunityPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleJoin(community.id)}
-                className="px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground text-sm font-medium rounded-md transition-colors"
-              >
-                Join
-              </button>
+              <div className="flex items-center gap-2">
+                {joinedCommunityIds.includes(community.id) && (
+                  <button
+                    onClick={() => navigate(`/community/${community.id}`)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-md transition-colors"
+                    title="Open Feed"
+                  >
+                    <ExternalLink className="h-5 w-5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleJoin(community.id)}
+                  disabled={joinedCommunityIds.includes(community.id)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    joinedCommunityIds.includes(community.id)
+                      ? 'bg-green-100 text-green-700 cursor-default'
+                      : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground'
+                  }`}
+                >
+                  {joinedCommunityIds.includes(community.id) ? 'Joined' : 'Join'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
