@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
-import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp, ThumbsDown, Flag, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ContentViewPage() {
@@ -11,6 +11,8 @@ export function ContentViewPage() {
   const [content, setContent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpvoting, setIsUpvoting] = useState(false);
+  const [isDownvoting, setIsDownvoting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
   
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -33,7 +35,9 @@ export function ContentViewPage() {
             collegeId: post.collegeId,
             communityId: post.communityId,
             upvotes: post.upvotes || 0,
+            downvotes: post.downvotes || 0,
             upvoted: post.upvoted || false,
+            downvoted: post.downvoted || false,
             createdAt: post.createdAt,
           });
           fetchComments(post.id);
@@ -83,13 +87,54 @@ export function ContentViewPage() {
         setContent(prev => ({
           ...prev,
           upvotes: res.data.upvotes,
-          upvoted: res.data.upvoted
+          downvotes: res.data.downvotes,
+          upvoted: res.data.upvoted,
+          downvoted: res.data.downvoted
         }));
       }
     } catch (error) {
       toast.error('Failed to upvote post');
     } finally {
       setIsUpvoting(false);
+    }
+  };
+
+  const handleDownvote = async () => {
+    if (!content) return;
+    try {
+      setIsDownvoting(true);
+      const res = await postService.downvotePost(content.id);
+      if (res.success) {
+        setContent(prev => ({
+          ...prev,
+          upvotes: res.data.upvotes,
+          downvotes: res.data.downvotes,
+          upvoted: res.data.upvoted,
+          downvoted: res.data.downvoted
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to downvote post');
+    } finally {
+      setIsDownvoting(false);
+    }
+  };
+
+  const handleReport = async () => {
+    if (!content) return;
+    const reason = window.prompt("Why are you reporting this post?");
+    if (!reason || !reason.trim()) return;
+
+    try {
+      setIsReporting(true);
+      const res = await postService.reportPost(content.id, reason);
+      if (res.success) {
+        toast.success("Post reported to college admins.");
+      }
+    } catch (error) {
+      toast.error('Failed to report post');
+    } finally {
+      setIsReporting(false);
     }
   };
 
@@ -185,11 +230,27 @@ export function ContentViewPage() {
             )}
             <button 
               onClick={handleUpvote}
-              disabled={isUpvoting}
+              disabled={isUpvoting || isDownvoting}
               className={`flex items-center gap-2 transition-colors ${content.upvoted ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
             >
               <ThumbsUp className={`h-4 w-4 ${content.upvoted ? 'fill-current' : ''}`} />
-              <span>{content.upvotes} {content.upvoted ? 'Upvoted' : 'Upvote'}</span>
+              <span>{content.upvotes}</span>
+            </button>
+            <button 
+              onClick={handleDownvote}
+              disabled={isUpvoting || isDownvoting}
+              className={`flex items-center gap-2 transition-colors ${content.downvoted ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+            >
+              <ThumbsDown className={`h-4 w-4 ${content.downvoted ? 'fill-current' : ''}`} />
+              <span>{content.downvotes}</span>
+            </button>
+            <button 
+              onClick={handleReport}
+              disabled={isReporting}
+              className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Flag className="h-4 w-4" />
+              <span>Report</span>
             </button>
             <div className="text-xs text-muted-foreground">
               College #{content.collegeId}
@@ -253,7 +314,7 @@ export function ContentViewPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-foreground">User {comment.authorId}</span>
+                      <span className="font-medium text-foreground">{comment.authorName || `User ${comment.authorId}`}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatDate(comment.createdAt)}
                       </span>

@@ -1,17 +1,36 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { Shield, User, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { getUser, logout } from '@/auth/auth';
+import { authService } from '@/api/authService';
 
 export function SuperAdminLayout() {
   const location = useLocation();
   const user = getUser();
+  const [fullName, setFullName] = useState(user?.fullName || '');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user?.id) {
+        try {
+          const res = await authService.getUserSummary(user.id);
+          if (res.success && res.data) {
+            setFullName(res.data.fullName);
+          }
+        } catch (err) {
+          console.error("Failed to fetch user data", err);
+        }
+      }
+    };
+    fetchUserData();
+  }, [user?.id]);
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Shield },
   ];
 
-  const initials = user?.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  const initials = fullName
+    ? fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'SA';
 
   return (
@@ -55,7 +74,7 @@ export function SuperAdminLayout() {
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.fullName || 'Super Admin'}</p>
+              <p className="text-sm font-medium text-foreground truncate">{fullName || 'Super Admin'}</p>
               <p className="text-xs text-muted-foreground">Super Admin</p>
             </div>
           </Link>

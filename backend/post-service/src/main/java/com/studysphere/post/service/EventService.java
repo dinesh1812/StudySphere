@@ -56,7 +56,7 @@ public class EventService {
                 ApiResponse<UserSummaryDto> response = userClient.getUserSummary(event.getCreatedBy());
                 return mapToEventResponse(event, response.getData());
             } catch (Exception e) {
-                UserSummaryDto fallback = new UserSummaryDto(event.getCreatedBy(), "Unknown Admin", "UNKNOWN", "Unknown College");
+                UserSummaryDto fallback = new UserSummaryDto(event.getCreatedBy(), "Unknown Admin", "UNKNOWN", "Unknown College", event.getHostCollegeId());
                 return mapToEventResponse(event, fallback);
             }
         }).collect(Collectors.toList());

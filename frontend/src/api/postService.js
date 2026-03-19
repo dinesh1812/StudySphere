@@ -21,6 +21,16 @@ export const postService = {
     return await apiClient.put(`/posts/${postId}/upvote`);
   },
 
+  downvotePost: async (postId) => {
+    return await apiClient.put(`/posts/${postId}/downvote`);
+  },
+
+  reportPost: async (postId, reason) => {
+    return await apiClient.post(`/posts/${postId}/report`, null, {
+      params: { reason }
+    });
+  },
+
   addComment: async (commentData) => {
     return await apiClient.post('/posts/comments', commentData);
   },

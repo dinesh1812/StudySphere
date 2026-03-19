@@ -12,4 +12,5 @@ public class UserSummaryDto {
     private String fullName;
     private String role;
     private String collegeName;
+    private Long collegeId;
 }

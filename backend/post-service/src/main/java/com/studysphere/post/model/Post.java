@@ -1,5 +1,6 @@
 package com.studysphere.post.model;
 
+import com.studysphere.common.enums.PostStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -31,7 +32,18 @@ public class Post {
 
     private Long communityId;
 
+    @Column(nullable = false)
     private int upvotes = 0;
+
+    @Column(nullable = false)
+    private int downvotes = 0;
+
+    @Column(nullable = false)
+    private int reportCount = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PostStatus status = PostStatus.APPROVED;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

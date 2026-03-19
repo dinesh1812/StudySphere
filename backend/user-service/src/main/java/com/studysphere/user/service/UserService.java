@@ -102,8 +102,13 @@ public class UserService {
     public UserSummaryDto getUserSummary(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        
         String collegeName = user.getCollege() != null ? user.getCollege().getName() : "N/A";
-        return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name(), collegeName);
+        // NEW: Safely extract the college ID
+        Long collegeId = user.getCollege() != null ? user.getCollege().getId() : null; 
+        
+        // Pass all 5 variables to the updated DTO
+        return new UserSummaryDto(user.getId(), user.getFullName(), user.getRole().name(), collegeName, collegeId);
     }
 
     // List all pending College Admins - called by Super Admin
@@ -160,4 +165,9 @@ public class UserService {
     public List<College> getAllColleges() {
         return collegeRepository.findAll();
     }
-}
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+}

@@ -73,5 +73,25 @@ export const adminService = {
     } catch (error) {
       return { success: false, message: error.message || 'Failed to fetch colleges', data: [] };
     }
+  },
+
+  getModerationDashboard: async () => {
+    try {
+      const response = await apiClient.get('/posts/moderation/dashboard');
+      return { success: true, data: response.data || [] };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to fetch moderation dashboard', data: [] };
+    }
+  },
+
+  resolveModeratedPost: async (postId, action) => {
+    try {
+      const response = await apiClient.put(`/posts/${postId}/moderate`, null, {
+        params: { action }
+      });
+      return { success: true, message: response.message };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to resolve moderation' };
+    }
   }
 };

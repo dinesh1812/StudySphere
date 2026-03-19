@@ -2,6 +2,7 @@ package com.studysphere.post.controller;
 
 import com.studysphere.common.response.ApiResponse;
 import com.studysphere.post.dto.CommentRequest;
+import com.studysphere.post.dto.CommentResponse;
 import com.studysphere.post.dto.PostRequest;
 import com.studysphere.post.dto.PostResponse;
 import com.studysphere.post.model.Comment;
@@ -76,8 +77,67 @@ public class PostController {
     }
 
     @GetMapping("/{postId}/comments")
-    public ResponseEntity<ApiResponse<List<Comment>>> getComments(@PathVariable Long postId) {
-        List<Comment> comments = postService.getCommentsForPost(postId);
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getComments(@PathVariable Long postId) {
+        List<CommentResponse> comments = postService.getCommentsForPost(postId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Comments fetched successfully", comments));
+    }
+
+    // -------------------------------------------------------------
+    // SECURED PHASE 8 ENDPOINTS (Using X-User-Id instead of RequestParam)
+    // -------------------------------------------------------------
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<ApiResponse<Void>> deletePost(
+            @PathVariable Long postId, 
+            @RequestHeader("X-User-Id") Long userId) { // FIXED
+        postService.deletePost(postId, userId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post deleted successfully", null));
+    }
+
+    @PostMapping("/{postId}/report")
+    public ResponseEntity<ApiResponse<Void>> reportPost(
+            @PathVariable Long postId, 
+            @RequestHeader("X-User-Id") Long userId, // FIXED
+            @RequestParam String reason) { // Reason is safe to be a query param
+        postService.reportPost(postId, userId, reason);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post reported to college admins", null));
+    }
+
+    @PutMapping("/{postId}/downvote")
+    public ResponseEntity<ApiResponse<PostResponse>> downvotePost(
+            @PathVariable Long postId, 
+            @RequestHeader("X-User-Id") Long userId) { // FIXED
+        PostResponse updatedPost = postService.downvotePost(postId, userId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post downvoted", updatedPost));
+    }
+
+    // --- ADMIN MODERATION ENDPOINTS ---
+
+    @GetMapping("/moderation/dashboard")
+    public ResponseEntity<ApiResponse<List<PostResponse>>> getModerationDashboard(
+            @RequestHeader("X-User-Id") Long adminId,
+            @RequestHeader("X-User-Role") String role) { // FIXED: early role check
+            
+        if (!"SUPER_ADMIN".equals(role) && !"COLLEGE_ADMIN".equals(role)) {
+            return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only admins can access the moderation dashboard.", null));
+        }
+        
+        List<PostResponse> flaggedPosts = postService.getModerationDashboard(adminId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Moderation dashboard fetched", flaggedPosts));
+    }
+
+    @PutMapping("/{postId}/moderate")
+    public ResponseEntity<ApiResponse<Void>> resolveModeratedPost(
+            @PathVariable Long postId, 
+            @RequestHeader("X-User-Id") Long adminId,
+            @RequestHeader("X-User-Role") String role, // FIXED: early role check
+            @RequestParam String action) { 
+            
+        if (!"SUPER_ADMIN".equals(role) && !"COLLEGE_ADMIN".equals(role)) {
+            return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only admins can moderate posts.", null));
+        }
+        
+        postService.resolveModeratedPost(postId, adminId, action);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post moderation resolved via action: " + action, null));
     }
 }

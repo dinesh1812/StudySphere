@@ -1,18 +1,37 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { Users, Building2, User, LogOut, Shield, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { getUser, logout } from '@/auth/auth';
+import { authService } from '@/api/authService';
 
 export function AdminLayout() {
   const location = useLocation();
   const user = getUser();
+  const [fullName, setFullName] = useState(user?.fullName || '');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user?.id) {
+        try {
+          const res = await authService.getUserSummary(user.id);
+          if (res.success && res.data) {
+            setFullName(res.data.fullName);
+          }
+        } catch (err) {
+          console.error("Failed to fetch user data", err);
+        }
+      }
+    };
+    fetchUserData();
+  }, [user?.id]);
 
   const navItems = [
     { path: '/', label: 'Student Approvals', icon: Users },
     { path: '/events', label: 'Events Management', icon: Calendar },
   ];
 
-  const initials = user?.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  const initials = fullName
+    ? fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'A';
 
   return (
@@ -56,7 +75,7 @@ export function AdminLayout() {
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.fullName || 'Admin'}</p>
+              <p className="text-sm font-medium text-foreground truncate">{fullName || 'Admin'}</p>
               <p className="text-xs text-muted-foreground">College Admin</p>
             </div>
           </Link>

@@ -78,28 +78,71 @@ public class UserController {
 
     // Super Admin: list all pending College Admins
     @GetMapping("/pending-admins")
-    public ResponseEntity<ApiResponse<List<User>>> getPendingCollegeAdmins() {
+    public ResponseEntity<ApiResponse<List<User>>> getPendingCollegeAdmins(
+            @RequestHeader("X-User-Role") String role) {
+            
+        if (!"SUPER_ADMIN".equals(role)) {
+            return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only Super Admins can see pending admins.", null));
+        }
+        
         List<User> pending = userService.getPendingCollegeAdmins();
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending admins fetched", pending));
     }
 
     // College Admin: list pending students in their college
     @GetMapping("/colleges/{collegeId}/pending-students")
-    public ResponseEntity<ApiResponse<List<User>>> getPendingStudents(@PathVariable Long collegeId) {
+    public ResponseEntity<ApiResponse<List<User>>> getPendingStudents(
+            @PathVariable Long collegeId,
+            @RequestHeader("X-User-Id") Long trustedUserId,
+            @RequestHeader("X-User-Role") String role) {
+            
+        // SECURITY: Verify this admin belongs to THIS college (unless Super Admin)
+        if (!"SUPER_ADMIN".equals(role)) {
+            if (!"COLLEGE_ADMIN".equals(role)) {
+                return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only admins can see students.", null));
+            }
+            // Check if the collegeId matches the admin's college
+            User admin = userService.getUserById(trustedUserId);
+            if (admin.getCollege() == null || !admin.getCollege().getId().equals(collegeId)) {
+                return ResponseEntity.status(403).body(new ApiResponse<>(false, "Security Violation: You can only see students in your own college.", null));
+            }
+        }
+
         List<User> pending = userService.getPendingStudentsForCollege(collegeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending students fetched", pending));
     }
 
     // College Admin: list approved students in their college
     @GetMapping("/colleges/{collegeId}/approved-students")
-    public ResponseEntity<ApiResponse<List<User>>> getApprovedStudents(@PathVariable Long collegeId) {
+    public ResponseEntity<ApiResponse<List<User>>> getApprovedStudents(
+            @PathVariable Long collegeId,
+            @RequestHeader("X-User-Id") Long trustedUserId,
+            @RequestHeader("X-User-Role") String role) {
+            
+        // SECURITY: Verify this admin belongs to THIS college (unless Super Admin)
+        if (!"SUPER_ADMIN".equals(role)) {
+            if (!"COLLEGE_ADMIN".equals(role)) {
+                return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only admins can see students.", null));
+            }
+            User admin = userService.getUserById(trustedUserId);
+            if (admin.getCollege() == null || !admin.getCollege().getId().equals(collegeId)) {
+                return ResponseEntity.status(403).body(new ApiResponse<>(false, "Security Violation: You can only see students in your own college.", null));
+            }
+        }
+
         List<User> approved = userService.getApprovedStudentsForCollege(collegeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Approved students fetched", approved));
     }
 
     // Super Admin: list all approved college admins
     @GetMapping("/approved-admins")
-    public ResponseEntity<ApiResponse<List<User>>> getApprovedCollegeAdmins() {
+    public ResponseEntity<ApiResponse<List<User>>> getApprovedCollegeAdmins(
+            @RequestHeader("X-User-Role") String role) {
+            
+        if (!"SUPER_ADMIN".equals(role)) {
+            return ResponseEntity.status(403).body(new ApiResponse<>(false, "Forbidden: Only Super Admins can see approved admins.", null));
+        }
+        
         List<User> approved = userService.getApprovedCollegeAdmins();
         return ResponseEntity.ok(new ApiResponse<>(true, "Approved admins fetched", approved));
     }
