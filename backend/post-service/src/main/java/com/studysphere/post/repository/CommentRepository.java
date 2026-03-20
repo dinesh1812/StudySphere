@@ -8,5 +8,10 @@ import java.util.List;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
-    List<Comment> findByPostIdOrderByCreatedAtAsc(Long postId);
+    
+    // FETCH TOP LEVEL COMMENTS ONLY
+    List<Comment> findByPostIdAndParentCommentIdIsNullOrderByCreatedAtAsc(Long postId);
+
+    // FETCH REPLIES FOR A SPECIFIC COMMENT
+    List<Comment> findByParentCommentIdOrderByCreatedAtAsc(Long parentCommentId);
 }

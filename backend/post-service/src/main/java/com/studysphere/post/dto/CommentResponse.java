@@ -16,4 +16,10 @@ public class CommentResponse {
     private Long authorId;
     private String authorName;
     private LocalDateTime createdAt;
+    private Long parentCommentId;
+    private int upvotes;
+    private int downvotes;
+    private int replyCount;
+    private boolean upvoted;
+    private boolean downvoted;
 }

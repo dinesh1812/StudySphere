@@ -24,6 +24,20 @@ public class Comment {
     @Column(nullable = false)
     private Long authorId;
 
+    // --- NEW: THREADING SUPPORT ---
+    @Column(name = "parent_comment_id")
+    private Long parentCommentId; // Null = Top-level comment. Has ID = Reply.
+
+    // --- NEW: AI METRICS COUNTERS ---
+    @Column(nullable = false)
+    private int upvotes = 0;
+
+    @Column(nullable = false)
+    private int downvotes = 0;
+
+    @Column(nullable = false)
+    private int replyCount = 0;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

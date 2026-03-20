@@ -18,4 +18,5 @@ public class PostResponse {
 
     // Whether the current user has upvoted this post
     private boolean upvoted;
+    private boolean downvoted;
 }

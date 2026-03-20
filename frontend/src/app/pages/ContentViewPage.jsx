@@ -7,6 +7,220 @@ import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ArrowBigUp, Ar
 import { ReportModal } from '@/app/components/ReportModal';
 import { toast } from 'sonner';
 
+function CommentItem({ comment, onReplyCreated }) {
+  const [showReplies, setShowReplies] = useState(false);
+  const [replies, setReplies] = useState([]);
+  const [isLoadingReplies, setIsLoadingReplies] = useState(false);
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [commentData, setCommentData] = useState(comment);
+
+  const toggleReplies = async () => {
+    if (!showReplies && replies.length === 0 && commentData.replyCount > 0) {
+      try {
+        setIsLoadingReplies(true);
+        const res = await postService.getReplies(commentData.id);
+        if (res.success) setReplies(res.data);
+      } catch (err) {
+        toast.error("Failed to load replies");
+      } finally {
+        setIsLoadingReplies(false);
+      }
+    }
+    setShowReplies(!showReplies);
+  };
+
+  const handleReplySubmit = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    try {
+      setIsSubmittingReply(true);
+      const res = await postService.addReply(commentData.id, { content: replyText });
+      if (res.success) {
+        toast.success("Reply posted!");
+        setReplyText('');
+        setIsReplying(false);
+        // Refresh replies if they are already shown, otherwise just expand and show
+        if (showReplies) {
+          const freshReplies = await postService.getReplies(commentData.id);
+          if (freshReplies.success) setReplies(freshReplies.data);
+        } else {
+          try {
+            setIsLoadingReplies(true);
+            const freshReplies = await postService.getReplies(commentData.id);
+            if (freshReplies.success) {
+              setReplies(freshReplies.data);
+              setShowReplies(true);
+            }
+          } catch (err) {
+            console.error("Failed to load new replies", err);
+          } finally {
+            setIsLoadingReplies(false);
+          }
+        }
+        setCommentData(prev => ({ ...prev, replyCount: prev.replyCount + 1 }));
+      }
+    } catch (err) {
+      toast.error("Failed to post reply");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const handleVote = async (type) => {
+    try {
+      const res = type === 'up' 
+        ? await postService.upvoteComment(commentData.id)
+        : await postService.downvoteComment(commentData.id);
+      if (res.success) {
+        setCommentData(prev => ({
+          ...prev,
+          upvotes: res.data.upvotes,
+          downvotes: res.data.downvotes,
+          upvoted: res.data.upvoted,
+          downvoted: res.data.downvoted
+        }));
+      }
+    } catch (err) {
+      toast.error(`Failed to ${type}vote comment`);
+    }
+  };
+
+  const formatDateShort = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+  };
+
+  return (
+    <div className={`flex flex-col gap-2 ${commentData.parentCommentId ? 'pl-6 ml-2 border-l border-border/40 mt-3' : 'py-6 border-b border-border/50'}`}>
+      <div className="flex gap-3">
+        {/* Avatar */}
+        <div className="w-8 h-8 rounded-full bg-secondary/80 flex items-center justify-center text-[10px] font-bold text-secondary-foreground shrink-0 border border-border/50 shadow-sm">
+          {(commentData.authorName || 'U').charAt(0).toUpperCase()}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          {/* Metadata */}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold text-foreground hover:underline cursor-pointer">
+              {commentData.authorName || `User ${commentData.authorId}`}
+            </span>
+            <span className="text-[10px] text-muted-foreground bg-secondary/30 px-1.5 py-0.5 rounded">
+              {formatDateShort(commentData.createdAt)}
+            </span>
+          </div>
+          
+          {/* Content */}
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+            {commentData.content}
+          </p>
+          
+          {/* Actions */}
+          <div className="flex items-center gap-4 mt-3">
+             <div className="flex items-center bg-secondary/30 hover:bg-secondary/50 rounded-full px-1.5 py-0.5 border border-border/40 transition-colors">
+                <button 
+                  onClick={() => handleVote('up')} 
+                  className={`p-0.5 transition-all active:scale-125 ${commentData.upvoted ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                >
+                    <ArrowBigUp className={`h-4 w-4 ${commentData.upvoted ? 'fill-current' : ''}`} />
+                </button>
+                <span className={`text-[10px] font-black min-w-[1.2rem] text-center ${commentData.upvoted ? 'text-primary' : commentData.downvoted ? 'text-destructive' : 'text-foreground'}`}>
+                  {commentData.upvotes - commentData.downvotes}
+                </span>
+                <button 
+                  onClick={() => handleVote('down')} 
+                  className={`p-0.5 transition-all active:scale-125 ${commentData.downvoted ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                >
+                    <ArrowBigDown className={`h-4 w-4 ${commentData.downvoted ? 'fill-current' : ''}`} />
+                </button>
+             </div>
+
+             <button 
+                onClick={() => setIsReplying(!isReplying)}
+                className={`text-[10px] font-bold flex items-center gap-1.5 transition-colors ${isReplying ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+             >
+                <MessageSquare className="h-3 w-3" />
+                <span>Reply</span>
+             </button>
+
+             {commentData.replyCount > 0 && (
+                <button 
+                    onClick={toggleReplies}
+                    className="text-[10px] font-bold text-primary hover:text-primary/80 flex items-center gap-1.5 group"
+                >
+                  <Users className="h-3 w-3" />
+                  <span className="group-hover:underline">
+                    {showReplies ? 'Collapse' : `${commentData.replyCount} replies`}
+                  </span>
+                </button>
+             )}
+          </div>
+
+          {/* Reply Input Form */}
+          {isReplying && (
+             <form onSubmit={handleReplySubmit} className="mt-4 flex flex-col gap-2 max-w-lg">
+                <textarea 
+                    autoFocus
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write your reply..."
+                    className="w-full text-xs p-3 bg-secondary/20 border border-border/40 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary min-h-[60px] max-h-[150px] resize-none placeholder:text-muted-foreground"
+                />
+                <div className="flex justify-end gap-2">
+                  <button 
+                      type="button"
+                      onClick={() => setIsReplying(false)}
+                      className="px-3 py-1 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                      Cancel
+                  </button>
+                  <button 
+                      type="submit"
+                      disabled={isSubmittingReply || !replyText.trim()}
+                      className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                  >
+                      {isSubmittingReply ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Posting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3 w-3" />
+                          <span>Post Reply</span>
+                        </>
+                      )}
+                  </button>
+                </div>
+             </form>
+          )}
+
+          {/* Nested Content - Replies */}
+          {showReplies && (
+             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                {isLoadingReplies ? (
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-6 py-4">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Loading replies...</span>
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                      {replies.map(reply => (
+                          <CommentItem key={reply.id} comment={reply} onReplyCreated={() => {}} />
+                      ))}
+                    </div>
+                )}
+             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ContentViewPage() {
   const { id } = useParams();
   const [content, setContent] = useState(null);
@@ -145,7 +359,6 @@ export function ContentViewPage() {
       setIsSubmittingComment(true);
       const payload = {
         postId: parseInt(id, 10),
-        // authorId is securely extracted by backend from the JWT via API Gateway
         content: newComment
       };
 
@@ -153,7 +366,7 @@ export function ContentViewPage() {
       if (res.success) {
         toast.success("Comment posted!");
         setNewComment('');
-        fetchComments(id); // Reload comments
+        fetchComments(id);
       }
     } catch (err) {
       toast.error('Failed to post comment');
@@ -286,7 +499,7 @@ export function ContentViewPage() {
             {/* Comment Form */}
             <form onSubmit={handlePostComment} className="mb-8">
               <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium shrink-0">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium shrink-0 shadow-sm border border-primary/20">
                   {getUser()?.fullName?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1 relative">
@@ -294,13 +507,13 @@ export function ContentViewPage() {
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Add to the discussion..."
-                    className="w-full pl-4 pr-12 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
+                    className="w-full pl-4 pr-12 py-3 border border-border rounded-xl bg-secondary/10 focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground resize-none"
                     rows={2}
                   />
                   <button
                     type="submit"
                     disabled={isSubmittingComment || !newComment.trim()}
-                    className="absolute right-3 bottom-3 p-1.5 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="absolute right-3 shadow-md bottom-3 p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
                   >
                     {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </button>
@@ -309,25 +522,12 @@ export function ContentViewPage() {
             </form>
 
             {/* Comment List */}
-            <div className="space-y-6">
+            <div className="divide-y divide-border/30">
               {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-medium shrink-0">
-                    U
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-foreground">{comment.authorName || `User ${comment.authorId}`}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-foreground/90 whitespace-pre-wrap">{comment.content}</p>
-                  </div>
-                </div>
+                <CommentItem key={comment.id} comment={comment} onReplyCreated={() => {}} />
               ))}
               {comments.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-8 bg-secondary/5 rounded-lg border border-dashed border-border/50">
                   No comments yet. Be the first to start the discussion!
                 </p>
               )}

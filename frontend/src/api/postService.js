@@ -37,5 +37,21 @@ export const postService = {
 
   getComments: async (postId) => {
     return await apiClient.get(`/posts/${postId}/comments`);
+  },
+
+  addReply: async (commentId, replyData) => {
+    return await apiClient.post(`/posts/comments/${commentId}/reply`, replyData);
+  },
+
+  getReplies: async (commentId) => {
+    return await apiClient.get(`/posts/comments/${commentId}/replies`);
+  },
+
+  upvoteComment: async (commentId) => {
+    return await apiClient.put(`/posts/comments/${commentId}/upvote`);
+  },
+
+  downvoteComment: async (commentId) => {
+    return await apiClient.put(`/posts/comments/${commentId}/downvote`);
   }
 };

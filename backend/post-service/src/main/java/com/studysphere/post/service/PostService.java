@@ -1,4 +1,5 @@
 package com.studysphere.post.service;
+import feign.FeignException;
 
 import com.studysphere.common.response.ApiResponse;
 import com.studysphere.post.client.ModerationClient;
@@ -12,8 +13,13 @@ import com.studysphere.post.model.Comment;
 import com.studysphere.post.model.Post;
 import com.studysphere.post.model.PostDownvote;
 import com.studysphere.post.model.PostReport;
+import com.studysphere.post.model.PostUpvote;
+import com.studysphere.post.model.CommentUpvote;
+import com.studysphere.post.model.CommentDownvote;
 import com.studysphere.common.enums.PostStatus;
+import com.studysphere.post.repository.CommentDownvoteRepository;
 import com.studysphere.post.repository.CommentRepository;
+import com.studysphere.post.repository.CommentUpvoteRepository;
 import com.studysphere.post.repository.PostDownvoteRepository;
 import com.studysphere.post.repository.PostReportRepository;
 import com.studysphere.post.repository.PostRepository;
@@ -35,6 +41,8 @@ public class PostService {
     private final ModerationClient moderationClient;
     private final PostReportRepository postReportRepository;
     private final PostDownvoteRepository postDownvoteRepository;
+    private final CommentUpvoteRepository commentUpvoteRepository;
+    private final CommentDownvoteRepository commentDownvoteRepository;
 
     // --- PRIVATE HELPER METHOD FOR DATA AGGREGATION ---
     private PostResponse mapToPostResponse(Post post, Long currentUserId) {
@@ -49,6 +57,7 @@ public class PostService {
 
         if (currentUserId != null) {
             response.setUpvoted(postUpvoteRepository.existsByPostIdAndUserId(post.getId(), currentUserId));
+            response.setDownvoted(postDownvoteRepository.existsByPostIdAndUserId(post.getId(), currentUserId));
         }
 
         try {
@@ -93,9 +102,7 @@ public class PostService {
                 } else {
                     post.setStatus(PostStatus.APPROVED);
                 }
-            } catch (feign.FeignException e) {
-                // If Python is offline, we can either block all posts or let them through. 
-                // Let's log it and let it through as PENDING for manual review.
+            } catch (FeignException e) {
                 System.out.println("AI Service Offline. Marking post as PENDING.");
                 post.setStatus(PostStatus.PENDING);
             }
@@ -138,7 +145,7 @@ public class PostService {
             post.setUpvotes(Math.max(0, post.getUpvotes() - 1));
         } else {
             // User NOT upvoted yet, so UPVOTE (toggle on)
-            com.studysphere.post.model.PostUpvote newUpvote = new com.studysphere.post.model.PostUpvote();
+            PostUpvote newUpvote = new PostUpvote();
             newUpvote.setPostId(postId);
             newUpvote.setUserId(userId);
             postUpvoteRepository.save(newUpvote);
@@ -150,7 +157,7 @@ public class PostService {
     }
 
     // 5. ADD COMMENT (Now AI-Powered)
-    public Comment addComment(CommentRequest request) {
+    public CommentResponse addComment(CommentRequest request) {
         // 1. Verify the post actually exists
         postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new RuntimeException("Post not found"));
@@ -165,7 +172,7 @@ public class PostService {
                 // Instantly block and reject the comment
                 throw new RuntimeException("Comment blocked by AI Moderator. " + modResponse.getReason());
             }
-        } catch (feign.FeignException e) {
+        } catch (FeignException e) {
             // If the Python server is offline, we'll log it but let the comment through 
             // so the app doesn't break if the AI goes down.
             System.out.println("WARNING: AI Moderation offline. Comment allowed.");
@@ -176,34 +183,10 @@ public class PostService {
         comment.setPostId(request.getPostId());
         comment.setContent(request.getContent());
         comment.setAuthorId(request.getAuthorId());
-        return commentRepository.save(comment);
+        Comment saved = commentRepository.save(comment);
+        return mapToCommentResponse(saved, request.getAuthorId());
     }
 
-    // 6. GET COMMENTS (Enriched with Author Names)
-    public List<CommentResponse> getCommentsForPost(Long postId) {
-        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
-        
-        return comments.stream().map(comment -> {
-            CommentResponse response = new CommentResponse();
-            response.setId(comment.getId());
-            response.setPostId(comment.getPostId());
-            response.setContent(comment.getContent());
-            response.setAuthorId(comment.getAuthorId());
-            response.setCreatedAt(comment.getCreatedAt());
-
-            try {
-                ApiResponse<UserSummaryDto> userResponse = userClient.getUserSummary(comment.getAuthorId());
-                if (userResponse.isSuccess() && userResponse.getData() != null) {
-                    response.setAuthorName(userResponse.getData().getFullName());
-                } else {
-                    response.setAuthorName("Unknown User");
-                }
-            } catch (Exception e) {
-                response.setAuthorName("Unknown User (Offline)");
-            }
-            return response;
-        }).collect(Collectors.toList());
-    }
 
     // --------------------------------------------------------
     // NEW FEATURES: DELETE, REPORT, MODERATE, AND DOWNVOTE
@@ -305,4 +288,127 @@ public class PostService {
         Post savedPost = postRepository.save(post);
         return mapToPostResponse(savedPost, userId);
     }
+
+    // --- HELPER METHOD FOR COMMENTS ---
+    private CommentResponse mapToCommentResponse(Comment comment, Long userId) {
+        CommentResponse response = new CommentResponse();
+        response.setId(comment.getId());
+        response.setPostId(comment.getPostId());
+        response.setContent(comment.getContent());
+        response.setAuthorId(comment.getAuthorId());
+        response.setCreatedAt(comment.getCreatedAt());
+        response.setParentCommentId(comment.getParentCommentId());
+        response.setUpvotes(comment.getUpvotes());
+        response.setDownvotes(comment.getDownvotes());
+        response.setReplyCount(comment.getReplyCount());
+
+        if (userId != null) {
+            response.setUpvoted(commentUpvoteRepository.existsByCommentIdAndUserId(comment.getId(), userId));
+            response.setDownvoted(commentDownvoteRepository.existsByCommentIdAndUserId(comment.getId(), userId));
+        }
+
+        try {
+            ApiResponse<UserSummaryDto> userResponse = userClient.getUserSummary(comment.getAuthorId());
+            if (userResponse.isSuccess() && userResponse.getData() != null) {
+                response.setAuthorName(userResponse.getData().getFullName());
+            } else {
+                response.setAuthorName("Unknown User");
+            }
+        } catch (Exception e) {
+            response.setAuthorName("Unknown User (Offline)");
+        }
+        return response;
+    }
+
+    // 6. GET COMMENTS (Top-Level Only)
+    public List<CommentResponse> getCommentsForPost(Long postId, Long userId) {
+        // Only fetch comments where Parent ID is Null
+        List<Comment> comments = commentRepository.findByPostIdAndParentCommentIdIsNullOrderByCreatedAtAsc(postId);
+        return comments.stream().map(c -> this.mapToCommentResponse(c, userId)).collect(Collectors.toList());
+    }
+
+    // -------------------------------------------------------------
+    // PHASE 9: REPLIES & COMMENT VOTING
+    // -------------------------------------------------------------
+
+    public CommentResponse addReplyToComment(Long parentCommentId, CommentRequest request) {
+        Comment parentComment = commentRepository.findById(parentCommentId)
+                .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+
+        // AI MODERATION GAUNTLET
+        try {
+            ModerationClient.ModerationResponse modResponse = moderationClient.checkContent(
+                    new ModerationClient.ModerationRequest(request.getContent())
+            );
+            if (modResponse.isToxic()) {
+                throw new RuntimeException("Reply blocked by AI Moderator. " + modResponse.getReason());
+            }
+        } catch (FeignException e) {
+            System.out.println("WARNING: AI Moderation offline. Reply allowed.");
+        }
+
+        Comment reply = new Comment();
+        reply.setPostId(parentComment.getPostId()); // Inherit post ID strictly from parent
+        reply.setParentCommentId(parentComment.getId());
+        reply.setContent(request.getContent());
+        reply.setAuthorId(request.getAuthorId());
+        Comment savedReply = commentRepository.save(reply);
+
+        parentComment.setReplyCount(parentComment.getReplyCount() + 1);
+        commentRepository.save(parentComment);
+
+        return mapToCommentResponse(savedReply, request.getAuthorId());
+    }
+
+    public List<CommentResponse> getRepliesForComment(Long parentCommentId, Long userId) {
+        List<Comment> replies = commentRepository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId);
+        return replies.stream().map(c -> this.mapToCommentResponse(c, userId)).collect(Collectors.toList());
+    }
+
+    public CommentResponse upvoteComment(Long commentId, Long userId) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new RuntimeException("Comment not found"));
+
+        commentDownvoteRepository.findByCommentIdAndUserId(commentId, userId).ifPresent(downvote -> {
+            commentDownvoteRepository.delete(downvote);
+            comment.setDownvotes(Math.max(0, comment.getDownvotes() - 1));
+        });
+
+        var existingUpvote = commentUpvoteRepository.findByCommentIdAndUserId(commentId, userId);
+        if (existingUpvote.isPresent()) {
+            commentUpvoteRepository.delete(existingUpvote.get());
+            comment.setUpvotes(Math.max(0, comment.getUpvotes() - 1));
+        } else {
+            CommentUpvote upvote = new CommentUpvote();
+            upvote.setCommentId(commentId);
+            upvote.setUserId(userId);
+            commentUpvoteRepository.save(upvote);
+            comment.setUpvotes(comment.getUpvotes() + 1);
+        }
+        Comment saved = commentRepository.save(comment);
+        return mapToCommentResponse(saved, userId);
+    }
+
+    public CommentResponse downvoteComment(Long commentId, Long userId) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new RuntimeException("Comment not found"));
+
+        commentUpvoteRepository.findByCommentIdAndUserId(commentId, userId).ifPresent(upvote -> {
+            commentUpvoteRepository.delete(upvote);
+            comment.setUpvotes(Math.max(0, comment.getUpvotes() - 1));
+        });
+
+        var existingDownvote = commentDownvoteRepository.findByCommentIdAndUserId(commentId, userId);
+        if (existingDownvote.isPresent()) {
+            commentDownvoteRepository.delete(existingDownvote.get());
+            comment.setDownvotes(Math.max(0, comment.getDownvotes() - 1));
+        } else {
+            CommentDownvote downvote = new CommentDownvote();
+            downvote.setCommentId(commentId);
+            downvote.setUserId(userId);
+            commentDownvoteRepository.save(downvote);
+            comment.setDownvotes(comment.getDownvotes() + 1);
+        }
+        Comment saved = commentRepository.save(comment);
+        return mapToCommentResponse(saved, userId);
+    }
+
 }
