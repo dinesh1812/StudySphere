@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
-import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ThumbsUp, ThumbsDown, Flag, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ArrowBigUp, ArrowBigDown, Flag, Users } from 'lucide-react';
+import { ReportModal } from '@/app/components/ReportModal';
 import { toast } from 'sonner';
 
 export function ContentViewPage() {
@@ -13,6 +14,7 @@ export function ContentViewPage() {
   const [isUpvoting, setIsUpvoting] = useState(false);
   const [isDownvoting, setIsDownvoting] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -120,16 +122,13 @@ export function ContentViewPage() {
     }
   };
 
-  const handleReport = async () => {
-    if (!content) return;
-    const reason = window.prompt("Why are you reporting this post?");
-    if (!reason || !reason.trim()) return;
-
+  const handleReport = async (reason) => {
     try {
       setIsReporting(true);
       const res = await postService.reportPost(content.id, reason);
       if (res.success) {
         toast.success("Post reported to college admins.");
+        setShowReportModal(false);
       }
     } catch (error) {
       toast.error('Failed to report post');
@@ -228,29 +227,33 @@ export function ContentViewPage() {
                 <span>{formatDate(content.createdAt)}</span>
               </div>
             )}
+            <div className="flex bg-secondary/30 rounded-full px-2 py-1 items-center gap-1 border border-border">
+              <button 
+                onClick={handleUpvote}
+                disabled={isUpvoting || isDownvoting}
+                className={`p-1 transition-all hover:bg-primary/20 rounded-md ${content.upvoted ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+              >
+                <ArrowBigUp className={`h-6 w-6 ${content.upvoted ? 'fill-current scale-110' : ''}`} />
+              </button>
+              <span className={`text-sm font-bold min-w-[1.5rem] text-center ${content.upvoted ? 'text-primary' : content.downvoted ? 'text-destructive' : 'text-foreground'}`}>
+                {content.upvotes - content.downvotes}
+              </span>
+              <button 
+                onClick={handleDownvote}
+                disabled={isUpvoting || isDownvoting}
+                className={`p-1 transition-all hover:bg-destructive/20 rounded-md ${content.downvoted ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+              >
+                <ArrowBigDown className={`h-6 w-6 ${content.downvoted ? 'fill-current scale-110' : ''}`} />
+              </button>
+            </div>
+            
             <button 
-              onClick={handleUpvote}
-              disabled={isUpvoting || isDownvoting}
-              className={`flex items-center gap-2 transition-colors ${content.upvoted ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
-            >
-              <ThumbsUp className={`h-4 w-4 ${content.upvoted ? 'fill-current' : ''}`} />
-              <span>{content.upvotes}</span>
-            </button>
-            <button 
-              onClick={handleDownvote}
-              disabled={isUpvoting || isDownvoting}
-              className={`flex items-center gap-2 transition-colors ${content.downvoted ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-            >
-              <ThumbsDown className={`h-4 w-4 ${content.downvoted ? 'fill-current' : ''}`} />
-              <span>{content.downvotes}</span>
-            </button>
-            <button 
-              onClick={handleReport}
+              onClick={() => setShowReportModal(true)}
               disabled={isReporting}
-              className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors"
+              className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors text-xs font-medium"
             >
               <Flag className="h-4 w-4" />
-              <span>Report</span>
+              <span>Report Content</span>
             </button>
             <div className="text-xs text-muted-foreground">
               College #{content.collegeId}
@@ -332,6 +335,14 @@ export function ContentViewPage() {
           </div>
         </div>
       </article>
+
+      {/* Report Modal */}
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onConfirm={handleReport}
+        isSubmitting={isReporting}
+      />
     </div>
   );
 }

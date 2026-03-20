@@ -22,7 +22,9 @@ export function SearchPage() {
             authorName: post.author?.fullName || 'Unknown User',
             authorRole: post.author?.role || 'STUDENT',
             upvotes: post.upvotes || 0,
+            downvotes: post.downvotes || 0,
             upvoted: post.upvoted || false,
+            downvoted: post.downvoted || false,
             createdAt: post.createdAt,
           }));
           setAllPosts(formattedPosts);
@@ -45,7 +47,9 @@ export function SearchPage() {
             return {
               ...post,
               upvotes: res.data.upvotes,
-              upvoted: res.data.upvoted
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
             };
           }
           return post;
@@ -53,6 +57,28 @@ export function SearchPage() {
       }
     } catch (error) {
       toast.error('Failed to upvote post');
+    }
+  };
+
+  const handleDownvote = async (id) => {
+    try {
+      const res = await postService.downvotePost(id);
+      if (res.success) {
+        setAllPosts(prev => prev.map(post => {
+          if (post.id === id.toString()) {
+            return {
+              ...post,
+              upvotes: res.data.upvotes,
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
+            };
+          }
+          return post;
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to downvote post');
     }
   };
 
@@ -114,8 +140,8 @@ export function SearchPage() {
               <ContentThumbnail
                 key={post.id}
                 {...post}
-                isBookmarked={post.upvoted}
-                onBookmark={() => handleUpvote(post.id)}
+                onUpvote={() => handleUpvote(post.id)}
+                onDownvote={() => handleDownvote(post.id)}
               />
             ))}
           </div>

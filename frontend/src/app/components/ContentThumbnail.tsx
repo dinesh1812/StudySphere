@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Bookmark, User, ThumbsUp, Calendar } from 'lucide-react';
+import { User, ArrowBigUp, ArrowBigDown, Calendar } from 'lucide-react';
 
 export interface ContentThumbnailProps {
   id: string;
@@ -8,9 +8,12 @@ export interface ContentThumbnailProps {
   authorName: string;
   authorRole?: string;
   upvotes: number;
+  downvotes: number;
+  upvoted?: boolean;
+  downvoted?: boolean;
   createdAt?: string;
-  isBookmarked?: boolean;
-  onBookmark?: () => void;
+  onUpvote?: () => void;
+  onDownvote?: () => void;
 }
 
 export function ContentThumbnail({
@@ -20,9 +23,12 @@ export function ContentThumbnail({
   authorName,
   authorRole,
   upvotes,
+  downvotes,
+  upvoted = false,
+  downvoted = false,
   createdAt,
-  isBookmarked = false,
-  onBookmark,
+  onUpvote,
+  onDownvote,
 }: ContentThumbnailProps) {
 
   const formatDate = (dateStr?: string) => {
@@ -32,7 +38,6 @@ export function ContentThumbnail({
     } catch { return ''; }
   };
 
-  // Generate a consistent color based on the author name
   const getAvatarColor = () => {
     const colors = [
       'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
@@ -49,19 +54,39 @@ export function ContentThumbnail({
   const snippet = content && content.length > 120 ? content.substring(0, 120) + '...' : content;
 
   return (
-    <div className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all">
-      <Link to={`/content/${id}`} className="block">
+    <div className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all flex">
+      {/* Voting Sidebar (Reddit-style) */}
+      <div className="w-12 bg-secondary/10 flex flex-col items-center py-4 gap-1 border-r border-border/50">
+        <button
+          onClick={(e) => { e.preventDefault(); onUpvote?.(); }}
+          className={`p-1 rounded hover:bg-primary/20 transition-colors ${upvoted ? 'text-primary' : 'text-muted-foreground'}`}
+        >
+          <ArrowBigUp className={`h-6 w-6 ${upvoted ? 'fill-current' : ''}`} />
+        </button>
+        <span className={`text-xs font-bold ${upvoted ? 'text-primary' : downvoted ? 'text-destructive' : 'text-foreground'}`}>
+          {upvotes - downvotes}
+        </span>
+        <button
+          onClick={(e) => { e.preventDefault(); onDownvote?.(); }}
+          className={`p-1 rounded hover:bg-destructive/20 transition-colors ${downvoted ? 'text-destructive' : 'text-muted-foreground'}`}
+        >
+          <ArrowBigDown className={`h-6 w-6 ${downvoted ? 'fill-current' : ''}`} />
+        </button>
+      </div>
+
+      <Link to={`/content/${id}`} className="flex-1 block">
         <div className="p-5">
           {/* Author Row */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-8 h-8 rounded-full ${getAvatarColor()} text-white flex items-center justify-center text-xs font-bold`}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-7 h-7 rounded-full ${getAvatarColor()} text-white flex items-center justify-center text-[10px] font-bold`}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{authorName}</p>
-              <p className="text-xs text-muted-foreground">
-                {authorRole === 'COLLEGE_ADMIN' ? 'College Admin' : 'Student'}
-              </p>
+              <span className="text-xs font-medium text-foreground truncate">{authorName}</span>
+              <span className="mx-1 text-muted-foreground">•</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                {authorRole === 'COLLEGE_ADMIN' ? 'Admin' : 'Student'}
+              </span>
             </div>
           </div>
 
@@ -72,48 +97,25 @@ export function ContentThumbnail({
 
           {/* Content Snippet */}
           {snippet && (
-            <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-3 leading-relaxed">
               {snippet}
             </p>
           )}
 
           {/* Metadata Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-border text-xs text-muted-foreground">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            {createdAt && (
               <span className="flex items-center gap-1">
-                <ThumbsUp className="h-3.5 w-3.5" />
-                {upvotes} upvote{upvotes !== 1 ? 's' : ''}
+                <Calendar className="h-3 w-3" />
+                {formatDate(createdAt)}
               </span>
-              {createdAt && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDate(createdAt)}
-                </span>
-              )}
+            )}
+            <div className="flex items-center gap-3">
+               {/* Could add more metadata here like comment count */}
             </div>
           </div>
         </div>
       </Link>
-
-      {/* Bookmark/Upvote Button */}
-      <div className="px-5 pb-4">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            onBookmark?.();
-          }}
-          className={`flex items-center gap-2 text-sm transition-colors ${
-            isBookmarked
-              ? 'text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <ThumbsUp
-            className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`}
-          />
-          <span>{isBookmarked ? 'Upvoted' : 'Upvote'}</span>
-        </button>
-      </div>
     </div>
   );
 }

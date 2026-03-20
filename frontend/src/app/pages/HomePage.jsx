@@ -31,7 +31,9 @@ export function HomePage() {
           authorName: post.author?.fullName || 'Unknown User',
           authorRole: post.author?.role || 'STUDENT',
           upvotes: post.upvotes || 0,
+          downvotes: post.downvotes || 0,
           upvoted: post.upvoted || false,
+          downvoted: post.downvoted || false,
           createdAt: post.createdAt,
         }));
         setPosts(formattedPosts);
@@ -76,13 +78,14 @@ export function HomePage() {
     try {
       const res = await postService.upvotePost(id);
       if (res.success) {
-        // Live update: Update the specific post in the array
         setPosts(prev => prev.map(post => {
           if (post.id === id.toString()) {
             return {
               ...post,
               upvotes: res.data.upvotes,
-              upvoted: res.data.upvoted
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
             };
           }
           return post;
@@ -90,6 +93,28 @@ export function HomePage() {
       }
     } catch (error) {
       toast.error('Failed to upvote post');
+    }
+  };
+
+  const handleDownvote = async (id) => {
+    try {
+      const res = await postService.downvotePost(id);
+      if (res.success) {
+        setPosts(prev => prev.map(post => {
+          if (post.id === id.toString()) {
+            return {
+              ...post,
+              upvotes: res.data.upvotes,
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
+            };
+          }
+          return post;
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to downvote post');
     }
   };
 
@@ -176,8 +201,8 @@ export function HomePage() {
             <ContentThumbnail
               key={post.id}
               {...post}
-              isBookmarked={post.upvoted}
-              onBookmark={() => handleUpvote(post.id)}
+              onUpvote={() => handleUpvote(post.id)}
+              onDownvote={() => handleDownvote(post.id)}
             />
           ))}
         </div>

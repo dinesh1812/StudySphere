@@ -52,7 +52,9 @@ export function CommunityFeedPage() {
           authorName: post.author?.fullName || 'Unknown User',
           authorRole: post.author?.role || 'STUDENT',
           upvotes: post.upvotes || 0,
+          downvotes: post.downvotes || 0,
           upvoted: post.upvoted || false,
+          downvoted: post.downvoted || false,
           createdAt: post.createdAt,
         }));
         setPosts(formattedPosts);
@@ -103,7 +105,9 @@ export function CommunityFeedPage() {
             return {
               ...post,
               upvotes: res.data.upvotes,
-              upvoted: res.data.upvoted
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
             };
           }
           return post;
@@ -111,6 +115,28 @@ export function CommunityFeedPage() {
       }
     } catch (error) {
       toast.error('Failed to upvote post');
+    }
+  };
+
+  const handleDownvote = async (postId) => {
+    try {
+      const res = await postService.downvotePost(postId);
+      if (res.success) {
+        setPosts(prev => prev.map(post => {
+          if (post.id === postId.toString()) {
+            return {
+              ...post,
+              upvotes: res.data.upvotes,
+              downvotes: res.data.downvotes,
+              upvoted: res.data.upvoted,
+              downvoted: res.data.downvoted
+            };
+          }
+          return post;
+        }));
+      }
+    } catch (error) {
+      toast.error('Failed to downvote post');
     }
   };
 
@@ -245,8 +271,8 @@ export function CommunityFeedPage() {
             <ContentThumbnail
               key={post.id}
               {...post}
-              isBookmarked={post.upvoted}
-              onBookmark={() => handleUpvote(post.id)}
+              onUpvote={() => handleUpvote(post.id)}
+              onDownvote={() => handleDownvote(post.id)}
             />
           ))}
         </div>
