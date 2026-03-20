@@ -6,11 +6,13 @@ import { communityService } from '@/api/communityService';
 import { Loader2, Send, PenSquare, ArrowLeft, LogOut, Users, Trash2 } from 'lucide-react';
 import { ConfirmModal } from '@/app/components/ConfirmModal';
 import { getUser } from '@/auth/auth';
+import { useUser } from '@/app/context/UserContext';
 import { toast } from 'sonner';
 
 export function CommunityFeedPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { userData } = useUser();
   const user = getUser();
   
   const [posts, setPosts] = useState([]);
@@ -89,13 +91,13 @@ export function CommunityFeedPage() {
       const payload = {
         title: newPost.title,
         content: newPost.content,
-        collegeId: user?.collegeId || 1,
+        collegeId: userData?.collegeId || user?.collegeId || 1,
         communityId: parseInt(id, 10)
       };
 
       const res = await postService.createPost(payload);
       if (res.success) {
-        toast.success('Post published to community!');
+        toast.success('Posted!');
         setNewPost({ title: '', content: '' });
         setShowPostForm(false);
         fetchFeed();
@@ -216,8 +218,8 @@ export function CommunityFeedPage() {
     }
   }, [showMembersModal]);
 
-  const initials = user?.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  const initials = userData?.fullName
+    ? userData.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'U';
 
   return (
@@ -248,7 +250,7 @@ export function CommunityFeedPage() {
             <>
               <button
                 onClick={() => setShowMembersModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-lg transition-colors border border-border"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary rounded-lg transition-colors border border-border"
               >
                 <Users className="h-4 w-4" />
                 Manage Members
@@ -286,7 +288,7 @@ export function CommunityFeedPage() {
               onClick={() => setShowPostForm(true)}
               className="flex-1 text-left px-4 py-2.5 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors text-sm"
             >
-              Share something with the team...
+              Share with the community...
             </button>
           </div>
         ) : (
@@ -296,7 +298,7 @@ export function CommunityFeedPage() {
                 {initials}
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{user?.fullName || 'User'}</p>
+                <p className="text-sm font-medium text-foreground">{userData?.fullName || 'User'}</p>
                 <p className="text-xs text-muted-foreground">Posting to {currentCommunity?.name || 'Community'}</p>
               </div>
             </div>
@@ -325,7 +327,7 @@ export function CommunityFeedPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-full font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-full font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Share

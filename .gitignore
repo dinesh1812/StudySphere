@@ -39,3 +39,5 @@ HELP.md
 
 ### VS Code ###
 **/.vscode/
+
+*.env

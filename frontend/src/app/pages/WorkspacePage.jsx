@@ -4,14 +4,14 @@ import { useNavigate } from 'react-router';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
+import { useUser } from '@/app/context/UserContext';
 import { toast } from 'sonner';
 
 export function WorkspacePage() {
   const navigate = useNavigate();
+  const { userData } = useUser();
   const [projects, setProjects] = useState([]);
-  const [discoverCommunities, setDiscoverCommunities] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
-  const [activeTab, setActiveTab] = useState('my'); // 'my' or 'discover'
 
   // Draft Article state
   const [isDrafting, setIsDrafting] = useState(false);
@@ -30,34 +30,14 @@ export function WorkspacePage() {
   const fetchCommunities = async () => {
     try {
       setIsLoadingProjects(true);
-      // Fetches only JOINED communities
       const res = await communityService.getAllCommunities();
       if (res.success) {
         setProjects(res.data);
-      }
-
-      // Pre-fetch discoverable communities
-      const discoverRes = await communityService.getBrowseCommunities();
-      if (discoverRes.success) {
-        const joinedIds = res.data.map(c => c.id);
-        setDiscoverCommunities(discoverRes.data.filter(c => !joinedIds.includes(c.id)));
       }
     } catch (err) {
       toast.error('Failed to load communities');
     } finally {
       setIsLoadingProjects(false);
-    }
-  };
-
-  const handleJoin = async (id) => {
-    try {
-      const res = await communityService.joinCommunity(id);
-      if (res.success) {
-        toast.success("Joined community!");
-        fetchCommunities();
-      }
-    } catch (err) {
-      toast.error("Failed to join");
     }
   };
 
@@ -76,18 +56,18 @@ export function WorkspacePage() {
         title: postData.title,
         content: postData.content,
         // authorId is no longer sent, backend securely extracts it from JWT via X-User-Id
-        collegeId: parseInt(user?.collegeId, 10) || 1,
+        collegeId: userData?.collegeId || user?.collegeId || 1,
         communityId: null // General Feed
       };
 
       const res = await postService.createPost(payload);
       if (res.success) {
-        toast.success("Article successfully published!");
+        toast.success("Posted!");
         setPostData({ title: '', content: '' });
         setIsDrafting(false);
       }
     } catch (err) {
-      toast.error('Failed to publish article');
+      toast.error('Failed to post');
     } finally {
       setIsSubmitting(false);
     }
@@ -102,14 +82,13 @@ export function WorkspacePage() {
 
     try {
       setIsSubmittingCommunity(true);
-      const user = getUser();
       const res = await communityService.createCommunity({
         name: communityData.name,
         description: communityData.description
         // authorId is no longer sent, backend securely extracts it from JWT via X-User-Id
       });
       if (res.success) {
-        toast.success("Community created!");
+        toast.success("Created!");
         setCommunityData({ name: '', description: '' });
         setIsCreatingCommunity(false);
         fetchCommunities(); // Refresh list
@@ -121,156 +100,157 @@ export function WorkspacePage() {
     }
   };
 
+  const ownedCommunities = projects.filter(c => c.createdBy === userData?.id);
+  const joinedCommunities = projects.filter(c => c.createdBy !== userData?.id);
+
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-2">
-            Workspace Hub
+          <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1 flex items-center gap-2 md:gap-3">
+            <FolderOpen className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+            Workspace
           </h1>
-          <p className="text-muted-foreground">
-            Manage your communities, projects, and collaborative work
-          </p>
+          <p className="text-xs md:text-sm text-muted-foreground font-medium">Manage your research groups and published findings</p>
         </div>
-        <button 
-          onClick={() => setIsCreatingCommunity(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Community
-        </button>
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={() => setIsCreatingCommunity(true)}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 md:px-5 py-2 md:py-2.5 bg-secondary text-foreground rounded-xl font-semibold text-xs md:text-sm hover:bg-secondary/80 transition-all active:scale-95 border border-border"
+          >
+            <Users className="h-4 w-4" />
+            New
+          </button>
+          <button
+            onClick={() => setIsDrafting(true)}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-xs md:text-sm hover:bg-primary/90 transition-all shadow-lg active:scale-95 shadow-primary/20"
+          >
+            <Plus className="h-4 w-4" />
+            Post
+          </button>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <button 
-          onClick={() => setIsCreatingCommunity(true)}
-          className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors text-left group"
-        >
-          <Users className="h-8 w-8 text-primary mb-3" />
-          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-            + Community
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Create a space for collaborative discussion
-          </p>
-        </button>
-
-        <button
-          onClick={() => setIsDrafting(true)}
-          className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors text-left group"
-        >
-          <FileText className="h-8 w-8 text-primary mb-3" />
-          <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-            + Post
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Start writing a new research article
-          </p>
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-border mb-8 gap-8">
-        <button 
-          onClick={() => setActiveTab('my')}
-          className={`pb-4 text-sm font-semibold transition-colors relative ${activeTab === 'my' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          My Communities ({projects.length})
-          {activeTab === 'my' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-        </button>
-        <button 
-          onClick={() => setActiveTab('discover')}
-          className={`pb-4 text-sm font-semibold transition-colors relative ${activeTab === 'discover' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          Discover New ({discoverCommunities.length})
-          {activeTab === 'discover' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoadingProjects ? (
-          <div className="col-span-full flex justify-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
-        ) : activeTab === 'my' ? (
-          projects.length === 0 ? (
-            <div className="col-span-full text-center py-20 bg-card/50 border border-dashed border-border rounded-xl">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground font-medium">No joined communities yet.</p>
-              <p className="text-sm text-muted-foreground/60">Check the Discover tab to find research groups!</p>
-            </div>
-          ) : (
-            projects.map((project) => (
-              <div
-                key={project.id}
-                onClick={() => navigate(`/community/${project.id}`)}
-                className="bg-card border border-border rounded-xl p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden"
-              >
-                {/* Decorative Accent */}
-                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
-                   <FolderOpen className="h-14 w-14 text-primary absolute -top-4 -right-4 grayscale group-hover:grayscale-0 transition-all rotate-12" />
-                </div>
-
-                <div className="relative z-10 h-full flex flex-col">
-                  <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors leading-tight">
-                    {project.name}
-                  </h3>
-                  
-                  <p className="text-sm text-muted-foreground mb-6 line-clamp-3 flex-1">
-                    {project.description}
-                  </p>
-
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-primary/60" />
-                      Active Community
-                    </span>
-                    <span className="text-primary opacity-0 group-hover:opacity-100 transition-all font-black">
-                      Project Open →
-                    </span>
-                  </div>
-                </div>
+      {isLoadingProjects ? (
+        <div className="flex justify-center p-20">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Section: My Communities (Owned) */}
+          <section className="space-y-6">
+          <div className="flex items-center gap-3 p-5 md:p-6 border-b border-border bg-muted/5">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Lock className="h-5 w-5" />
               </div>
-            ))
-          )
-        ) : (
-          discoverCommunities.length === 0 ? (
-            <div className="col-span-full text-center py-20 bg-card/50 border border-dashed border-border rounded-xl">
-              <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground">No new communities to discover right now.</p>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base md:text-lg font-semibold text-foreground truncate">My Communities</h2>
+                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Created by you</p>
+              </div>
+              <span className="hidden sm:block text-[10px] font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                {ownedCommunities.length}
+              </span>
             </div>
-          ) : (
-            discoverCommunities.map((project) => (
-              <div
-                key={project.id}
-                className="bg-card border border-border rounded-xl p-8 hover:shadow-lg transition-all border-dashed hover:border-primary/50 flex flex-col"
-              >
-                <h3 className="text-xl font-bold text-foreground mb-3 leading-tight">
-                  {project.name}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-6 line-clamp-4 flex-1">
-                  {project.description}
-                </p>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleJoin(project.id); }}
-                  className="w-full py-3 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-sm font-black rounded-lg transition-all shadow-sm active:scale-95"
+
+            {ownedCommunities.length === 0 ? (
+              <div className="bg-card/50 border border-border border-dashed rounded-2xl p-12 text-center group hover:border-primary/30 transition-all">
+                <Users className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-20 group-hover:opacity-40 transition-opacity" />
+                <p className="text-muted-foreground text-sm font-medium mb-4">You haven't created any communities yet.</p>
+                <button
+                  onClick={() => setIsCreatingCommunity(true)}
+                  className="text-primary text-sm font-bold hover:underline underline-offset-4"
                 >
-                  Join Community
+                  Create your first community
                 </button>
               </div>
-            ))
-          )
-        )}
-      </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {ownedCommunities.map((community) => (
+                  <div
+                    key={community.id}
+                    onClick={() => navigate(`/community/${community.id}`)}
+                    className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-primary opacity-50" />
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/5 text-primary flex items-center justify-center text-xl font-bold group-hover:scale-110 transition-transform">
+                        {community.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors text-lg">{community.name}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-1 font-medium italic opacity-70">
+                          {community.description || 'Lead researcher'}
+                        </p>
+                      </div>
+                    </div>
+                    <FolderOpen className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Section: Joined Communities */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3 p-5 md:p-6 border-b border-border bg-muted/5">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base md:text-lg font-semibold text-foreground truncate">Joined</h2>
+                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Participating in</p>
+              </div>
+              <span className="hidden sm:block text-[10px] font-bold text-muted-foreground bg-secondary px-3 py-1 rounded-full uppercase tracking-wider">
+                {joinedCommunities.length}
+              </span>
+            </div>
+
+            {joinedCommunities.length === 0 ? (
+              <div className="bg-card/50 border border-border border-dashed rounded-2xl p-12 text-center group hover:border-border/60 transition-all">
+                <Users className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-20 group-hover:opacity-40 transition-opacity" />
+                <p className="text-muted-foreground text-sm font-medium mb-4">You haven't joined any communities yet.</p>
+                <button
+                  onClick={() => navigate('/community')}
+                  className="text-primary text-sm font-bold hover:underline underline-offset-4"
+                >
+                  Explore and join one
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {joinedCommunities.map((community) => (
+                  <div
+                    key={community.id}
+                    onClick={() => navigate(`/community/${community.id}`)}
+                    className="bg-card border border-border rounded-2xl p-6 hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer flex items-center justify-between group relative overflow-hidden"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-secondary text-secondary-foreground flex items-center justify-center text-xl font-bold group-hover:scale-110 transition-transform">
+                        {community.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors text-lg">{community.name}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-1 font-medium tracking-tight overflow-hidden text-ellipsis max-w-[220px]">
+                          {community.description || 'Researcher'}
+                        </p>
+                      </div>
+                    </div>
+                    <FolderOpen className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
 
       {/* Draft Article Modal */}
       {isDrafting && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-2xl rounded-xl shadow-lg border border-border flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-2xl rounded-2xl shadow-2xl border border-border flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-2xl font-semibold text-foreground">Draft New Article</h2>
+              <h2 className="text-2xl font-bold text-foreground">Draft New Article</h2>
               <button
                 onClick={() => setIsDrafting(false)}
                 className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -282,7 +262,7 @@ export function WorkspacePage() {
             <form onSubmit={handleCreatePost} className="p-6 overflow-y-auto">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-bold text-foreground mb-2">
                     Title
                   </label>
                   <input
@@ -290,13 +270,13 @@ export function WorkspacePage() {
                     value={postData.title}
                     onChange={(e) => setPostData({ ...postData, title: e.target.value })}
                     placeholder="Enter article title..."
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground font-medium"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-bold text-foreground mb-2">
                     Content
                   </label>
                   <textarea
@@ -304,7 +284,7 @@ export function WorkspacePage() {
                     onChange={(e) => setPostData({ ...postData, content: e.target.value })}
                     placeholder="Write your research findings..."
                     rows={12}
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none text-sm leading-relaxed"
                     required
                   />
                 </div>
@@ -314,16 +294,16 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => setIsDrafting(false)}
-                  className="px-6 py-2.5 rounded-lg border border-border hover:bg-secondary transition-colors text-foreground font-medium"
+                  className="px-6 py-2.5 rounded-xl border border-border hover:bg-secondary transition-colors text-foreground font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black transition-colors disabled:opacity-50 shadow-lg shadow-primary/20"
                 >
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Publish Article
                 </button>
               </div>
@@ -334,10 +314,10 @@ export function WorkspacePage() {
 
       {/* Create Community Modal */}
       {isCreatingCommunity && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-2xl rounded-xl shadow-lg border border-border flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-xl rounded-2xl shadow-2xl border border-border flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-2xl font-semibold text-foreground">Create Community</h2>
+              <h2 className="text-2xl font-bold text-foreground">Create Community</h2>
               <button
                 onClick={() => setIsCreatingCommunity(false)}
                 className="p-2 hover:bg-secondary rounded-full transition-colors"
@@ -349,21 +329,21 @@ export function WorkspacePage() {
             <form onSubmit={handleCreateCommunity} className="p-6 overflow-y-auto">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-bold text-foreground mb-2">
                     Community Name
                   </label>
                   <input
                     type="text"
                     value={communityData.name}
                     onChange={(e) => setCommunityData({ ...communityData, name: e.target.value })}
-                    placeholder="Enter community name..."
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+                    placeholder="e.g. Quantum Computing Research"
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground font-medium"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-bold text-foreground mb-2">
                     Description
                   </label>
                   <textarea
@@ -371,7 +351,7 @@ export function WorkspacePage() {
                     onChange={(e) => setCommunityData({ ...communityData, description: e.target.value })}
                     placeholder="Describe your community's purpose..."
                     rows={4}
-                    className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none text-sm leading-relaxed"
                     required
                   />
                 </div>
@@ -381,16 +361,16 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => setIsCreatingCommunity(false)}
-                  className="px-6 py-2.5 rounded-lg border border-border hover:bg-secondary transition-colors text-foreground font-medium"
+                  className="px-6 py-2.5 rounded-xl border border-border hover:bg-secondary transition-colors text-foreground font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingCommunity}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black transition-colors disabled:opacity-50 shadow-lg shadow-primary/20"
                 >
-                  {isSubmittingCommunity && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isSubmittingCommunity ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
                   Create Community
                 </button>
               </div>

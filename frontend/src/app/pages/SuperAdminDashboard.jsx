@@ -104,25 +104,25 @@ export function SuperAdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold text-foreground mb-1">Platform Overview</h1>
-        <p className="text-muted-foreground text-sm">Manage institutions and approve College Administrators.</p>
+        <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-1">Platform Overview</h1>
+        <p className="text-muted-foreground text-xs md:text-sm">Manage institutions and approve College Administrators.</p>
       </div>
 
-      {/* Stats — only show data we actually have from the backend */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: 'Provisioned Institutions', value: institutions.length, icon: Building2, color: 'text-primary bg-primary/10' },
-          { label: 'Pending Admin Approvals', value: pendingAdmins.length, icon: Clock, color: pendingAdmins.length > 0 ? 'text-orange-500 bg-orange-500/10' : 'text-green-500 bg-green-500/10' },
+          { label: 'Institutions', value: institutions.length, icon: Building2, color: 'text-primary bg-primary/10' },
+          { label: 'Pending Admins', value: pendingAdmins.length, icon: Clock, color: pendingAdmins.length > 0 ? 'text-orange-500 bg-orange-500/10' : 'text-green-500 bg-green-500/10' },
           { label: 'Approved Admins', value: approvedAdmins.length, icon: UserCheck, color: 'text-green-500 bg-green-500/10' },
         ].map(stat => (
-          <div key={stat.label} className="p-5 bg-card border border-border rounded-lg shadow-sm">
+          <div key={stat.label} className="p-4 md:p-5 bg-card border border-border rounded-lg shadow-sm">
             <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-lg ${stat.color}`}>
-                <stat.icon className="h-5 w-5" />
+              <div className={`p-2 md:p-2.5 rounded-lg ${stat.color}`}>
+                <stat.icon className="h-4 w-4 md:h-5 md:w-5" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-                <h3 className="text-2xl font-bold text-foreground">{stat.value}</h3>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate uppercase tracking-wider">{stat.label}</p>
+                <h3 className="text-xl md:text-2xl font-bold text-foreground line-clamp-1">{stat.value}</h3>
               </div>
             </div>
           </div>

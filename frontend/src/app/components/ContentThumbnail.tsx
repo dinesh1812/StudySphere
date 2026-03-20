@@ -101,7 +101,7 @@ export function ContentThumbnail({
               >
                 <ArrowBigUp className={`h-5 w-5 ${upvoted ? 'fill-current' : ''}`} />
               </button>
-              <span className={`text-xs font-bold min-w-[1rem] text-center ${upvoted ? 'text-primary' : downvoted ? 'text-destructive' : 'text-foreground'}`}>
+              <span className={`text-xs font-bold min-w-[1rem] text-center ${upvoted ? 'text-primary' : 'text-foreground'}`}>
                 {upvotes}
               </span>
               <button

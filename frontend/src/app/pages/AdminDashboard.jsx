@@ -88,33 +88,33 @@ export function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold text-foreground mb-1">College Administration</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-1">College Administration</h1>
+        <p className="text-muted-foreground text-xs md:text-sm">
           Review and manage student registrations for your institution.
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 md:p-5 bg-card border border-border rounded-lg shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-orange-500/10 text-orange-500">
-              <Users className="h-5 w-5" />
+            <div className="p-2 md:p-2.5 rounded-lg bg-orange-500/10 text-orange-500">
+              <Users className="h-4 w-4 md:h-5 md:w-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Pending Approvals</p>
-              <h3 className="text-2xl font-bold text-foreground">{pendingStudents.length}</h3>
+            <div className="min-w-0">
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate uppercase tracking-wider">Pending Approvals</p>
+              <h3 className="text-xl md:text-2xl font-bold text-foreground line-clamp-1">{pendingStudents.length}</h3>
             </div>
           </div>
         </div>
-        <div className="p-5 bg-card border border-border rounded-lg shadow-sm">
+        <div className="p-4 md:p-5 bg-card border border-border rounded-lg shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-green-500/10 text-green-500">
-              <UserCheck className="h-5 w-5" />
+            <div className="p-2 md:p-2.5 rounded-lg bg-green-500/10 text-green-500">
+              <UserCheck className="h-4 w-4 md:h-5 md:w-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">Approved Students</p>
-              <h3 className="text-2xl font-bold text-foreground">{approvedStudents.length}</h3>
+            <div className="min-w-0">
+              <p className="text-[10px] md:text-xs font-medium text-muted-foreground truncate uppercase tracking-wider">Approved Students</p>
+              <h3 className="text-xl md:text-2xl font-bold text-foreground line-clamp-1">{approvedStudents.length}</h3>
             </div>
           </div>
         </div>

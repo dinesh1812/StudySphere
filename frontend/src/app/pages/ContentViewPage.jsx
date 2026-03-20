@@ -2,14 +2,14 @@ import { useParams, Link, useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
-import { getUser } from '@/auth/auth';
+import { useUser } from '@/app/context/UserContext';
 import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ArrowBigUp, ArrowBigDown, Flag, Users, Trash2, MoreVertical } from 'lucide-react';
 import { ReportModal } from '@/app/components/ReportModal';
 import { ConfirmModal } from '@/app/components/ConfirmModal';
 import { toast } from 'sonner';
 
 function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
-  const currentUser = getUser();
+  const { userData: currentUser } = useUser();
   const [showReplies, setShowReplies] = useState(false);
   const [replies, setReplies] = useState([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
@@ -141,7 +141,7 @@ function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
                 >
                     <ArrowBigUp className={`h-5 w-5 ${commentData.upvoted ? 'fill-current' : ''}`} />
                 </button>
-                <span className={`text-xs font-black min-w-[1.5rem] text-center ${commentData.upvoted ? 'text-primary' : commentData.downvoted ? 'text-destructive' : 'text-foreground'}`}>
+                <span className={`text-xs font-bold min-w-[1.5rem] text-center ${commentData.upvoted ? 'text-primary' : 'text-foreground'}`}>
                   {commentData.upvotes}
                 </span>
                 <button
@@ -194,7 +194,7 @@ function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
                   <button
                       type="submit"
                       disabled={isSubmittingReply || !replyText.trim()}
-                      className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-black rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                      className="px-4 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 shadow-sm"
                   >
                       {isSubmittingReply ? (
                         <>
@@ -204,7 +204,7 @@ function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
                       ) : (
                         <>
                           <Send className="h-3 w-3" />
-                          <span>Post Reply</span>
+                          <span>Post</span>
                         </>
                       )}
                   </button>
@@ -245,6 +245,7 @@ function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
 export function ContentViewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { userData: currentUser } = useUser();
   const [content, setContent] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpvoting, setIsUpvoting] = useState(false);
@@ -259,7 +260,7 @@ export function ContentViewPage() {
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [communityName, setCommunityName] = useState('');
-  const currentUser = getUser();
+
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -464,7 +465,7 @@ export function ContentViewPage() {
 
       const res = await postService.addComment(payload);
       if (res.success) {
-        toast.success("Comment posted!");
+        toast.success("Posted!");
         setNewComment('');
         fetchComments(id);
       }
@@ -518,35 +519,24 @@ export function ContentViewPage() {
       <article className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="p-8">
           {/* Title */}
-          <h1 className="text-4xl font-semibold text-foreground mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-6">
             {content.title}
           </h1>
 
           {/* Author & Metadata */}
-          <div className="flex flex-wrap items-center gap-6 pb-6 border-b border-border text-sm">
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-4 py-3 border-y border-border/40 w-full">
-                <Link
-                  to={`/profile/${content.authorId}`}
-                  className="flex items-center gap-1.5 px-2 py-1 bg-secondary/50 rounded-md hover:bg-secondary/70 transition-colors"
-                >
-                  <User className="h-3 w-3" />
-                  {content.author?.fullName || 'Anonymous Researcher'}
-                </Link>
-                <span className="flex items-center gap-1.5 px-2 py-1 bg-secondary/50 rounded-md">
-                  <Calendar className="h-3 w-3" />
-                  {formatDate(content.createdAt)}
-                </span>
-
-                {currentUser?.id === content.author?.id && (
-                  <button
-                    onClick={() => setShowDeletePostConfirm(true)}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md transition-colors ml-auto"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Delete Post
-                  </button>
-                )}
-              </div>
+          <div className="flex flex-wrap items-center gap-4 pb-6 border-b border-border text-xs text-muted-foreground">
+            <Link
+              to={`/profile/${content.authorId}`}
+              className="flex items-center gap-1.5 px-2 py-1 bg-secondary/50 rounded-md hover:bg-secondary/70 transition-colors"
+            >
+              <User className="h-3 w-3" />
+              {content.author?.fullName || 'Anonymous Researcher'}
+            </Link>
+            
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-secondary/50 rounded-md">
+              <Calendar className="h-3 w-3" />
+              {formatDate(content.createdAt)}
+            </span>
 
             <div className="flex bg-secondary/30 rounded-full px-2 py-1 items-center gap-1 border border-border">
               <button
@@ -556,7 +546,7 @@ export function ContentViewPage() {
               >
                 <ArrowBigUp className={`h-6 w-6 ${content.upvoted ? 'fill-current scale-110' : ''}`} />
               </button>
-              <span className={`text-sm font-bold min-w-[1.5rem] text-center ${content.upvoted ? 'text-primary' : content.downvoted ? 'text-destructive' : 'text-foreground'}`}>
+              <span className={`text-sm font-bold min-w-[1.5rem] text-center ${content.upvoted ? 'text-primary' : 'text-foreground'}`}>
                 {content.upvotes}
               </span>
               <button
@@ -571,20 +561,30 @@ export function ContentViewPage() {
             <button
               onClick={() => setShowReportModal(true)}
               disabled={isReporting}
-              className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors text-xs font-medium"
+              className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-colors font-medium ml-2"
             >
               <Flag className="h-4 w-4" />
-              <span>Report Content</span>
+              <span>Report</span>
             </button>
 
             {communityName && (
               <Link
                 to={`/community/${content.communityId}`}
-                className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                className="flex items-center gap-2 font-semibold px-2 py-1 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors ml-auto"
               >
                 <Users className="h-3 w-3" />
-                <span>In Community: {communityName}</span>
+                <span>{communityName}</span>
               </Link>
+            )}
+
+            {currentUser?.id === content.author?.id && (
+              <button
+                onClick={() => setShowDeletePostConfirm(true)}
+                className={`flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md transition-colors ${!communityName ? 'ml-auto' : ''}`}
+              >
+                <Trash2 className="h-3 w-3" />
+                <span>Delete</span>
+              </button>
             )}
           </div>
 

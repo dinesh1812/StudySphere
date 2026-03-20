@@ -37,8 +37,19 @@ export function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-card border-r border-border shrink-0 md:h-screen md:sticky md:top-0 flex flex-col">
+      {/* Mobile Header */}
+      <div className="md:hidden h-14 bg-card border-b border-border flex items-center justify-between px-4 sticky top-0 z-40">
+        <Link to="/" className="flex items-center gap-2 text-primary font-bold">
+          <Building2 className="h-5 w-5" />
+          <span className="text-base tracking-tight text-foreground">College Admin</span>
+        </Link>
+        <Link to={`/profile/${user?.id || 'me'}`} className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+          {initials}
+        </Link>
+      </div>
+
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex w-64 bg-card border-r border-border shrink-0 h-screen sticky top-0 flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />
@@ -90,8 +101,33 @@ export function AdminLayout() {
         </div>
       </aside>
 
+      {/* Bottom Bar - Mobile */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex items-center justify-around px-2 py-3 z-50">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`p-2 rounded-lg transition-colors ${
+                isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+              }`}
+            >
+              <Icon className="h-6 w-6" />
+            </Link>
+          );
+        })}
+        <button
+          onClick={logout}
+          className="p-2 text-destructive border-l border-border pl-4"
+        >
+          <LogOut className="h-6 w-6" />
+        </button>
+      </nav>
+
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-8 overflow-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-auto pb-20 md:pb-8">
         <Outlet />
       </main>
     </div>

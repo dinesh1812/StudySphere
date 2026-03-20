@@ -3,9 +3,11 @@ import { ContentThumbnail } from '@/app/components/ContentThumbnail';
 import { postService } from '@/api/postService';
 import { Loader2, Send, PenSquare } from 'lucide-react';
 import { getUser } from '@/auth/auth';
+import { useUser } from '@/app/context/UserContext';
 import { toast } from 'sonner';
 
 export function HomePage() {
+  const { userData } = useUser();
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const user = getUser();
@@ -57,12 +59,12 @@ export function HomePage() {
       const payload = {
         title: newPost.title,
         content: newPost.content,
-        collegeId: user?.collegeId || 1,
+        collegeId: userData?.collegeId || user?.collegeId || 1,
       };
 
       const res = await postService.createPost(payload);
       if (res.success) {
-        toast.success('Post published!');
+        toast.success('Posted!');
         setNewPost({ title: '', content: '' });
         setShowPostForm(false);
         fetchFeed(); // Refresh the feed
@@ -136,8 +138,8 @@ export function HomePage() {
     }
   };
 
-  const initials = user?.fullName
-    ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  const initials = userData?.fullName
+    ? userData.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'U';
 
   return (
@@ -153,7 +155,7 @@ export function HomePage() {
               onClick={() => setShowPostForm(true)}
               className="flex-1 text-left px-4 py-2.5 rounded-full border border-border bg-secondary/50 text-muted-foreground hover:bg-secondary transition-colors text-sm"
             >
-              Start a post...
+              Post something...
             </button>
           </div>
         ) : (
@@ -163,7 +165,7 @@ export function HomePage() {
                 {initials}
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{user?.fullName || 'User'}</p>
+                <p className="text-sm font-medium text-foreground">{userData?.fullName || 'User'}</p>
                 <p className="text-xs text-muted-foreground">Posting to General Feed</p>
               </div>
             </div>

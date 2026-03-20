@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { communityService } from '@/api/communityService';
 import { useNavigate } from 'react-router';
-import { Users, Loader2, Plus, ExternalLink } from 'lucide-react';
+import { Users, Loader2, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function CommunityPage() {
@@ -14,7 +14,7 @@ export function CommunityPage() {
     const fetchData = async () => {
       try {
         const [commRes, joinedRes] = await Promise.all([
-          communityService.getAllCommunities(),
+          communityService.getBrowseCommunities(),
           communityService.getJoinedCommunityIds()
         ]);
         
@@ -33,77 +33,69 @@ export function CommunityPage() {
     try {
       const res = await communityService.joinCommunity(communityId);
       if (res.success) {
-        toast.success('Successfully joined community!');
+        toast.success('Joined!');
         setJoinedCommunityIds([...joinedCommunityIds, communityId]);
       }
     } catch (err) {
-      toast.error('Failed to join community');
+      toast.error('Failed to join');
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-foreground mb-2">Communities</h1>
-        <p className="text-muted-foreground">
-          Join academic communities and collaborate with your peers
-        </p>
-      </div>
-
+    <div className="max-w-7xl mx-auto">
+      <h1 className="text-2xl font-bold text-foreground mb-8">Discover communities</h1>
+      
       {isLoading ? (
-        <div className="flex justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex justify-center p-24">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
         </div>
       ) : communities.length === 0 ? (
-        <div className="text-center py-12 bg-card border border-border rounded-lg">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground mb-1">No communities yet</p>
-          <p className="text-sm text-muted-foreground">
-            Create one from the Workspace page to get started!
-          </p>
+        <div className="text-center py-20 bg-card border border-border rounded-xl">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+          <p className="text-muted-foreground">No communities found.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {communities.map((community) => (
-            <div
-              key={community.id}
-              className="bg-card border border-border rounded-lg p-5 flex items-center justify-between hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  <Users className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">{community.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {community.description || 'Academic community'}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {communities.map((community) => {
+            const isJoined = joinedCommunityIds.includes(community.id);
+            return (
+              <div
+                key={community.id}
+                className="bg-card border border-border rounded-xl p-8 hover:shadow-lg transition-all border-dashed hover:border-primary/50 flex flex-col group relative overflow-hidden"
+              >
+                 {/* Decorative Accent */}
+                 <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-20 transition-opacity">
+                    <FolderOpen className="h-14 w-14 text-primary absolute -top-4 -right-4 grayscale group-hover:grayscale-0 transition-all rotate-12" />
+                 </div>
+
+                <div className="relative z-10 flex flex-col h-full">
+                  <h3 className="text-xl font-bold text-foreground mb-3 leading-tight group-hover:text-primary transition-colors">
+                    {community.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-6 line-clamp-4 flex-1">
+                    {community.description || 'Academic research and discussion group.'}
                   </p>
+                  <div className="p-4 md:p-6 space-y-3">
+                    {isJoined ? (
+                      <button 
+                        onClick={() => navigate(`/community/${community.id}`)}
+                        className="w-full py-2.5 md:py-3 bg-primary text-primary-foreground text-xs md:text-sm font-semibold rounded-lg transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        Open
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleJoin(community.id)}
+                        className="w-full py-2.5 md:py-3 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-xs md:text-sm font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                      >
+                        Join
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {joinedCommunityIds.includes(community.id) && (
-                  <button
-                    onClick={() => navigate(`/community/${community.id}`)}
-                    className="p-2 text-primary hover:bg-primary/10 rounded-md transition-colors"
-                    title="Open Feed"
-                  >
-                    <ExternalLink className="h-5 w-5" />
-                  </button>
-                )}
-                <button
-                  onClick={() => handleJoin(community.id)}
-                  disabled={joinedCommunityIds.includes(community.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    joinedCommunityIds.includes(community.id)
-                      ? 'bg-green-100 text-green-700 cursor-default'
-                      : 'bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground'
-                  }`}
-                >
-                  {joinedCommunityIds.includes(community.id) ? 'Joined' : 'Join'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
