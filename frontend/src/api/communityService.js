@@ -11,7 +11,13 @@ export const communityService = {
   },
 
   getAllCommunities: async () => {
+    // This now returns only the communities the user has joined (filtered by backend)
     return await apiClient.get('/communities');
+  },
+
+  getBrowseCommunities: async () => {
+    // New endpoint to see ALL communities if we want to join new ones
+    return await apiClient.get('/communities/all');
   },
 
   getJoinedCommunityIds: async () => {
@@ -20,5 +26,17 @@ export const communityService = {
 
   leaveCommunity: async (communityId) => {
     return await apiClient.delete(`/communities/${communityId}/leave`);
+  },
+
+  deleteCommunity: async (communityId) => {
+    return await apiClient.delete(`/communities/${communityId}`);
+  },
+
+  getMembers: async (communityId) => {
+    return await apiClient.get(`/communities/${communityId}/members`);
+  },
+
+  removeMember: async (communityId, studentId) => {
+    return await apiClient.delete(`/communities/${communityId}/members/${studentId}`);
   }
 };

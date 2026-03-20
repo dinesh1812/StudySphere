@@ -39,13 +39,26 @@ public class CommunityController {
     }
     
     @GetMapping
+    public ResponseEntity<ApiResponse<List<Community>>> getMyCommunities(@RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Your joined communities fetched", communityService.getJoinedCommunities(userId)));
+    }
+
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<Community>>> getAllCommunities() {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Communities fetched", communityService.getAllCommunities()));
+        return ResponseEntity.ok(new ApiResponse<>(true, "All communities fetched", communityService.getAllCommunities()));
     }
 
     @GetMapping("/joined")
     public ResponseEntity<ApiResponse<List<Long>>> getJoinedCommunities(@RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Joined communities fetched", communityService.getJoinedCommunityIds(userId)));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Joined community IDs fetched", communityService.getJoinedCommunityIds(userId)));
+    }
+
+    @DeleteMapping("/{communityId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCommunity(
+            @PathVariable Long communityId,
+            @RequestHeader("X-User-Id") Long userId) {
+        communityService.deleteCommunity(communityId, userId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Community deleted successfully", null));
     }
 
     @DeleteMapping("/{communityId}/leave")
@@ -54,5 +67,20 @@ public class CommunityController {
             @RequestHeader("X-User-Id") Long trustedStudentId) {
         communityService.leaveCommunity(communityId, trustedStudentId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Successfully left community", null));
+    }
+
+    @GetMapping("/{communityId}/members")
+    public ResponseEntity<ApiResponse<List<com.studysphere.post.model.CommunityMember>>> getMembers(
+            @PathVariable Long communityId) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Members fetched", communityService.getCommunityMembers(communityId)));
+    }
+
+    @DeleteMapping("/{communityId}/members/{studentId}")
+    public ResponseEntity<ApiResponse<Void>> removeMember(
+            @PathVariable Long communityId,
+            @PathVariable Long studentId,
+            @RequestHeader("X-User-Id") Long creatorId) {
+        communityService.removeMember(communityId, creatorId, studentId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Member removed successfully", null));
     }
 }

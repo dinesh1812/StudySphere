@@ -62,6 +62,10 @@ public class CommunityService {
         return communityRepository.findAll();
     }
 
+    public List<Community> getJoinedCommunities(Long studentId) {
+        return communityRepository.findByStudentId(studentId);
+    }
+
     public List<Long> getJoinedCommunityIds(Long studentId) {
         return communityMemberRepository.findCommunityIdsByStudentId(studentId);
     }
@@ -72,5 +76,42 @@ public class CommunityService {
             throw new RuntimeException("You are not a member of this community.");
         }
         communityMemberRepository.deleteByCommunityIdAndStudentId(communityId, studentId);
+    }
+
+    @Transactional
+    public void deleteCommunity(Long communityId, Long userId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("Community not found."));
+        
+        // Security Check: Only the creator can delete
+        if (!community.getCreatedBy().equals(userId)) {
+            throw new RuntimeException("Unauthorized: Only the community creator can delete this community.");
+        }
+
+        // 1. Delete all membership records
+        communityMemberRepository.deleteByCommunityId(communityId);
+        
+        // 2. Delete the community itself
+        communityRepository.delete(community);
+    }
+
+    public List<CommunityMember> getCommunityMembers(Long communityId) {
+        return communityMemberRepository.findByCommunityId(communityId);
+    }
+
+    @Transactional
+    public void removeMember(Long communityId, Long creatorId, Long targetStudentId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new RuntimeException("Community not found."));
+
+        if (!community.getCreatedBy().equals(creatorId)) {
+            throw new RuntimeException("Unauthorized: Only the community creator can remove members.");
+        }
+
+        if (creatorId.equals(targetStudentId)) {
+            throw new RuntimeException("You cannot remove yourself from your own community. Delete the community instead.");
+        }
+
+        communityMemberRepository.deleteByCommunityIdAndStudentId(communityId, targetStudentId);
     }
 }

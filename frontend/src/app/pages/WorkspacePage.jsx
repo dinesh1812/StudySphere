@@ -9,7 +9,9 @@ import { toast } from 'sonner';
 export function WorkspacePage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [discoverCommunities, setDiscoverCommunities] = useState([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [activeTab, setActiveTab] = useState('my'); // 'my' or 'discover'
 
   // Draft Article state
   const [isDrafting, setIsDrafting] = useState(false);
@@ -28,14 +30,34 @@ export function WorkspacePage() {
   const fetchCommunities = async () => {
     try {
       setIsLoadingProjects(true);
+      // Fetches only JOINED communities
       const res = await communityService.getAllCommunities();
       if (res.success) {
         setProjects(res.data);
       }
+
+      // Pre-fetch discoverable communities
+      const discoverRes = await communityService.getBrowseCommunities();
+      if (discoverRes.success) {
+        const joinedIds = res.data.map(c => c.id);
+        setDiscoverCommunities(discoverRes.data.filter(c => !joinedIds.includes(c.id)));
+      }
     } catch (err) {
-      toast.error('Failed to load active projects');
+      toast.error('Failed to load communities');
     } finally {
       setIsLoadingProjects(false);
+    }
+  };
+
+  const handleJoin = async (id) => {
+    try {
+      const res = await communityService.joinCommunity(id);
+      if (res.success) {
+        toast.success("Joined community!");
+        fetchCommunities();
+      }
+    } catch (err) {
+      toast.error("Failed to join");
     }
   };
 
@@ -149,57 +171,97 @@ export function WorkspacePage() {
         </button>
       </div>
 
-      {/* Active Projects */}
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Active Projects / Communities</h2>
-        <button onClick={fetchCommunities} className="text-sm text-primary hover:underline">
-          Refresh List
+      {/* Tabs */}
+      <div className="flex border-b border-border mb-8 gap-8">
+        <button 
+          onClick={() => setActiveTab('my')}
+          className={`pb-4 text-sm font-semibold transition-colors relative ${activeTab === 'my' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          My Communities ({projects.length})
+          {activeTab === 'my' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('discover')}
+          className={`pb-4 text-sm font-semibold transition-colors relative ${activeTab === 'discover' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Discover New ({discoverCommunities.length})
+          {activeTab === 'discover' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoadingProjects ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="col-span-full flex justify-center py-12">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
-        ) : projects.length === 0 ? (
-          <div className="text-center py-12 bg-card border border-border rounded-lg">
-            <p className="text-muted-foreground">No active research communities found. Start a project!</p>
-          </div>
-        ) : (
-          projects.map((project) => (
-            <div
-              key={project.id}
-              className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all group cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+        ) : activeTab === 'my' ? (
+          projects.length === 0 ? (
+            <div className="col-span-full text-center py-20 bg-card/50 border border-dashed border-border rounded-xl">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+              <p className="text-muted-foreground font-medium">No joined communities yet.</p>
+              <p className="text-sm text-muted-foreground/60">Check the Discover tab to find research groups!</p>
+            </div>
+          ) : (
+            projects.map((project) => (
+              <div
+                key={project.id}
+                onClick={() => navigate(`/community/${project.id}`)}
+                className="bg-card border border-border rounded-xl p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+              >
+                {/* Decorative Accent */}
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
+                   <FolderOpen className="h-14 w-14 text-primary absolute -top-4 -right-4 grayscale group-hover:grayscale-0 transition-all rotate-12" />
+                </div>
+
+                <div className="relative z-10 h-full flex flex-col">
+                  <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors leading-tight">
                     {project.name}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  
+                  <p className="text-sm text-muted-foreground mb-6 line-clamp-3 flex-1">
+                    {project.description}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">
                     <span className="flex items-center gap-1.5">
-                      <FolderOpen className="h-4 w-4" />
-                      Research Network
+                      <Users className="h-3.5 w-3.5 text-primary/60" />
+                      Active Community
                     </span>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4" />
-                      Community
-                    </span>
-                    <span className="flex items-center gap-1.5 line-clamp-1">
-                      {project.description}
+                    <span className="text-primary opacity-0 group-hover:opacity-100 transition-all font-black">
+                      Project Open →
                     </span>
                   </div>
                 </div>
+              </div>
+            ))
+          )
+        ) : (
+          discoverCommunities.length === 0 ? (
+            <div className="col-span-full text-center py-20 bg-card/50 border border-dashed border-border rounded-xl">
+              <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+              <p className="text-muted-foreground">No new communities to discover right now.</p>
+            </div>
+          ) : (
+            discoverCommunities.map((project) => (
+              <div
+                key={project.id}
+                className="bg-card border border-border rounded-xl p-8 hover:shadow-lg transition-all border-dashed hover:border-primary/50 flex flex-col"
+              >
+                <h3 className="text-xl font-bold text-foreground mb-3 leading-tight">
+                  {project.name}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6 line-clamp-4 flex-1">
+                  {project.description}
+                </p>
                 <button 
-                  onClick={() => navigate(`/community/${project.id}`)}
-                  className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-md transition-colors"
+                  onClick={(e) => { e.stopPropagation(); handleJoin(project.id); }}
+                  className="w-full py-3 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground text-sm font-black rounded-lg transition-all shadow-sm active:scale-95"
                 >
-                  Open
+                  Join Community
                 </button>
               </div>
-            </div>
-          ))
+            ))
+          )
         )}
       </div>
 

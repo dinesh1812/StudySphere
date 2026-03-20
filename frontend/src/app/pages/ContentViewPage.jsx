@@ -5,6 +5,7 @@ import { communityService } from '@/api/communityService';
 import { getUser } from '@/auth/auth';
 import { ArrowLeft, Calendar, User, Loader2, MessageSquare, Send, ArrowBigUp, ArrowBigDown, Flag, Users, Trash2, MoreVertical } from 'lucide-react';
 import { ReportModal } from '@/app/components/ReportModal';
+import { ConfirmModal } from '@/app/components/ConfirmModal';
 import { toast } from 'sonner';
 
 function CommentItem({ comment, onReply, onUpvote, onDownvote, onDelete }) {
@@ -250,6 +251,9 @@ export function ContentViewPage() {
   const [isDownvoting, setIsDownvoting] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDeletePostConfirm, setShowDeletePostConfirm] = useState(false);
+  const [showDeleteCommentConfirm, setShowDeleteCommentConfirm] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -405,10 +409,6 @@ export function ContentViewPage() {
   };
 
   const handleDeletePost = async () => {
-    if (!window.confirm("Are you sure you want to delete this research article? This cannot be undone.")) {
-      return;
-    }
-
     try {
       const res = await postService.deletePost(id);
       if (res.success) {
@@ -420,19 +420,19 @@ export function ContentViewPage() {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm("Are you sure you want to delete this comment?")) {
-      return;
-    }
+  const handleDeleteComment = async () => {
+    if (!commentToDelete) return;
 
     try {
-      const res = await postService.deleteComment(commentId);
+      const res = await postService.deleteComment(commentToDelete);
       if (res.success) {
         toast.success("Comment deleted");
         fetchComments(); // Refresh list
       }
     } catch (error) {
       toast.error("Failed to delete comment");
+    } finally {
+      setCommentToDelete(null);
     }
   };
 
@@ -539,7 +539,7 @@ export function ContentViewPage() {
 
                 {currentUser?.id === content.author?.id && (
                   <button
-                    onClick={handleDeletePost}
+                    onClick={() => setShowDeletePostConfirm(true)}
                     className="flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-md transition-colors ml-auto"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -636,7 +636,10 @@ export function ContentViewPage() {
                   onReply={(parentId, text) => fetchComments()}
                   onUpvote={(commentId) => handleUpvoteComment(commentId)}
                   onDownvote={(commentId) => handleDownvoteComment(commentId)}
-                  onDelete={(commentId) => handleDeleteComment(commentId)}
+                  onDelete={(commentId) => {
+                    setCommentToDelete(commentId);
+                    setShowDeleteCommentConfirm(true);
+                  }}
                 />
               ))}
               {comments.length === 0 && (
@@ -655,6 +658,31 @@ export function ContentViewPage() {
         onClose={() => setShowReportModal(false)}
         onConfirm={handleReport}
         isSubmitting={isReporting}
+      />
+
+      {/* Delete Post Confirm */}
+      <ConfirmModal
+        isOpen={showDeletePostConfirm}
+        onClose={() => setShowDeletePostConfirm(false)}
+        onConfirm={handleDeletePost}
+        title="Delete Research Article?"
+        message="This action will permanently erase this article and all associated discussions. This cannot be undone."
+        confirmText="Permanently Delete"
+        variant="destructive"
+      />
+
+      {/* Delete Comment Confirm */}
+      <ConfirmModal
+        isOpen={showDeleteCommentConfirm}
+        onClose={() => {
+          setShowDeleteCommentConfirm(false);
+          setCommentToDelete(null);
+        }}
+        onConfirm={handleDeleteComment}
+        title="Delete Comment?"
+        message="Are you sure you want to remove this contribution from the discussion?"
+        confirmText="Delete"
+        variant="destructive"
       />
     </div>
   );

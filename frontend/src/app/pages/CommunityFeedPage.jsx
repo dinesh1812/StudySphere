@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router';
 import { ContentThumbnail } from '@/app/components/ContentThumbnail';
 import { postService } from '@/api/postService';
 import { communityService } from '@/api/communityService';
-import { Loader2, Send, PenSquare, ArrowLeft, LogOut, Users } from 'lucide-react';
+import { Loader2, Send, PenSquare, ArrowLeft, LogOut, Users, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '@/app/components/ConfirmModal';
 import { getUser } from '@/auth/auth';
 import { toast } from 'sonner';
 
@@ -16,6 +17,16 @@ export function CommunityFeedPage() {
   const [communities, setCommunities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+
+  // Modal States
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRemoveMemberConfirm, setShowRemoveMemberConfirm] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
 
   // Create Post state
   const [showPostForm, setShowPostForm] = useState(false);
@@ -29,7 +40,7 @@ export function CommunityFeedPage() {
 
   const fetchCommunityDetails = async () => {
     try {
-      const res = await communityService.getAllCommunities();
+      const res = await communityService.getBrowseCommunities(); // Get all to find our current one
       if (res.success) {
         setCommunities(res.data);
       }
@@ -141,8 +152,6 @@ export function CommunityFeedPage() {
   };
 
   const handleLeaveCommunity = async () => {
-    if (!window.confirm("Are you sure you want to leave this research team?")) return;
-    
     try {
       setIsLeaving(true);
       const res = await communityService.leaveCommunity(id);
@@ -156,6 +165,56 @@ export function CommunityFeedPage() {
       setIsLeaving(false);
     }
   };
+
+  const handleDeleteCommunity = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await communityService.deleteCommunity(id);
+      if (res.success) {
+        toast.success("Community deleted permanently");
+        navigate('/workspace');
+      }
+    } catch (err) {
+      toast.error("Failed to delete community");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      setIsLoadingMembers(true);
+      const res = await communityService.getMembers(id);
+      if (res.success) {
+        setMembers(res.data);
+      }
+    } catch (err) {
+      toast.error("Failed to load members");
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+    try {
+      const res = await communityService.removeMember(id, memberToRemove);
+      if (res.success) {
+        toast.success("Member removed");
+        fetchMembers(); // Refresh list
+      }
+    } catch (err) {
+      toast.error("Failed to remove member");
+    } finally {
+      setMemberToRemove(null);
+    }
+  };
+
+  useEffect(() => {
+    if (showMembersModal) {
+      fetchMembers();
+    }
+  }, [showMembersModal]);
 
   const initials = user?.fullName
     ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -184,14 +243,36 @@ export function CommunityFeedPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleLeaveCommunity}
-          disabled={isLeaving}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-destructive/20"
-        >
-          {isLeaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-          Leave Team
-        </button>
+        <div className="flex items-center gap-2">
+          {currentCommunity?.createdBy === user?.id ? (
+            <>
+              <button
+                onClick={() => setShowMembersModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-lg transition-colors border border-border"
+              >
+                <Users className="h-4 w-4" />
+                Manage Members
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-destructive/20"
+              >
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete Community
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowLeaveConfirm(true)}
+              disabled={isLeaving}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors border border-destructive/20"
+            >
+              {isLeaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              Leave Team
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Create Post Prompt */}
@@ -277,6 +358,94 @@ export function CommunityFeedPage() {
           ))}
         </div>
       )}
+      {/* Members Modal */}
+      {showMembersModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-md rounded-xl shadow-lg border border-border flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Community Members
+              </h2>
+              <button
+                onClick={() => setShowMembersModal(false)}
+                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                title="Close"
+              >
+                <LogOut className="h-5 w-5 text-muted-foreground rotate-180" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-4">
+              {isLoadingMembers ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : members.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No members found.</p>
+              ) : (
+                members.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border/40">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                        {member.studentId === currentCommunity?.createdBy ? '👑' : 'U'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">User ID: {member.studentId}</p>
+                        <p className="text-[10px] text-muted-foreground">Joined {new Date(member.joinedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {member.studentId !== user?.id && (
+                      <button
+                        onClick={() => {
+                          setMemberToRemove(member.studentId);
+                          setShowRemoveMemberConfirm(true);
+                        }}
+                        className="text-xs font-bold text-destructive hover:underline px-2 py-1"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Confirm Modals */}
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={handleLeaveCommunity}
+        title="Leave Community?"
+        message="Are you sure you want to exit this research community? You will no longer be able to participate in discussions."
+        confirmText="Leave Community"
+        variant="destructive"
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteCommunity}
+        title="Delete Community Permanently?"
+        message="CRITICAL: This action will erase all posts, comments, and member data associated with this community. This cannot be undone."
+        confirmText="Delete Everything"
+        variant="destructive"
+      />
+
+      <ConfirmModal
+        isOpen={showRemoveMemberConfirm}
+        onClose={() => {
+          setShowRemoveMemberConfirm(false);
+          setMemberToRemove(null);
+        }}
+        onConfirm={handleRemoveMember}
+        title="Remove Member?"
+        message={`Are you sure you want to remove user ${memberToRemove} from the community?`}
+        confirmText="Remove Student"
+        variant="destructive"
+      />
     </div>
   );
 }

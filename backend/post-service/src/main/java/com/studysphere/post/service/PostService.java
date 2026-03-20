@@ -31,7 +31,6 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-    private final EventRepository eventRepository;
     private final PostUpvoteRepository postUpvoteRepository;
     private final UserClient userClient;
     private final CommunityMemberRepository communityMemberRepository;
