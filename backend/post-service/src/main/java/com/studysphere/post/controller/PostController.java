@@ -134,6 +134,14 @@ public class PostController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Post deleted successfully", null));
     }
 
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @PathVariable Long commentId, 
+            @RequestHeader("X-User-Id") Long userId) {
+        postService.deleteComment(commentId, userId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Comment deleted successfully", null));
+    }
+
     @PostMapping("/{postId}/report")
     public ResponseEntity<ApiResponse<Void>> reportPost(
             @PathVariable Long postId, 

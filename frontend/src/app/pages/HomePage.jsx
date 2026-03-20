@@ -76,6 +76,14 @@ export function HomePage() {
 
   const handleUpvote = async (id) => {
     try {
+      // VISUAL OPTIMIZATION: Flip state immediately for responsiveness
+      setPosts(prev => prev.map(post => {
+        if (post.id === id.toString() && post.downvoted) {
+          return { ...post, downvoted: false, upvoted: true, upvotes: post.upvotes + 1, downvotes: Math.max(0, post.downvotes - 1) };
+        }
+        return post;
+      }));
+
       const res = await postService.upvotePost(id);
       if (res.success) {
         setPosts(prev => prev.map(post => {
@@ -93,11 +101,20 @@ export function HomePage() {
       }
     } catch (error) {
       toast.error('Failed to upvote post');
+      fetchFeed(); // Rollback/Sync
     }
   };
 
   const handleDownvote = async (id) => {
     try {
+      // VISUAL OPTIMIZATION: Flip state immediately for responsiveness
+      setPosts(prev => prev.map(post => {
+        if (post.id === id.toString() && post.upvoted) {
+          return { ...post, upvoted: false, downvoted: true, upvotes: Math.max(0, post.upvotes - 1), downvotes: post.downvotes + 1 };
+        }
+        return post;
+      }));
+
       const res = await postService.downvotePost(id);
       if (res.success) {
         setPosts(prev => prev.map(post => {
@@ -115,6 +132,7 @@ export function HomePage() {
       }
     } catch (error) {
       toast.error('Failed to downvote post');
+      fetchFeed(); // Rollback/Sync
     }
   };
 

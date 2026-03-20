@@ -73,4 +73,26 @@ public class EventService {
         response.setHostAdmin(adminData);
         return response;
     }
+
+    public void deleteEvent(Long eventId, Long adminId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        ApiResponse<UserSummaryDto> adminResponse = userClient.getUserSummary(adminId);
+        if (!adminResponse.isSuccess() || adminResponse.getData() == null) {
+            throw new RuntimeException("Could not verify admin identity.");
+        }
+
+        UserSummaryDto admin = adminResponse.getData();
+        
+        if (!admin.getRole().equals("SUPER_ADMIN") && !admin.getRole().equals("COLLEGE_ADMIN")) {
+            throw new RuntimeException("Unauthorized: Only admins can delete events.");
+        }
+
+        if (admin.getRole().equals("COLLEGE_ADMIN") && !admin.getCollegeId().equals(event.getHostCollegeId())) {
+            throw new RuntimeException("Security Violation: You can only delete events from your own college.");
+        }
+
+        eventRepository.delete(event);
+    }
 }

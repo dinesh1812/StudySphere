@@ -67,6 +67,19 @@ export function AdminEventsPage() {
     }
   };
 
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm("Are you sure you want to delete this event? This will remove it from all student feeds.")) return;
+    try {
+      const res = await eventService.deleteEvent(eventId);
+      if (res.success) {
+        toast.success("Event deleted");
+        fetchMyEvents();
+      }
+    } catch (error) {
+      toast.error("Failed to delete event");
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -180,6 +193,14 @@ export function AdminEventsPage() {
                     </div>
                   </div>
                 </div>
+                
+                <button
+                  onClick={() => handleDeleteEvent(event.id)}
+                  className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                  title="Delete Event"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </div>
             </div>
           ))

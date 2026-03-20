@@ -53,5 +53,13 @@ export const postService = {
 
   downvoteComment: async (commentId) => {
     return await apiClient.put(`/posts/comments/${commentId}/downvote`);
+  },
+
+  deletePost: async (postId) => {
+    return await apiClient.delete(`/posts/${postId}`);
+  },
+
+  deleteComment: async (commentId) => {
+    return await apiClient.delete(`/posts/comments/${commentId}`);
   }
 };

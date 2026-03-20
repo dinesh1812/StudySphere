@@ -36,4 +36,12 @@ public class EventController {
         List<EventResponse> events = eventService.getGlobalEvents();
         return ResponseEntity.ok(new ApiResponse<>(true, "Global events fetched", events));
     }
+
+    @DeleteMapping("/{eventId}")
+    public ResponseEntity<ApiResponse<Void>> deleteEvent(
+            @PathVariable Long eventId,
+            @RequestHeader("X-User-Id") Long trustedAdminId) {
+        eventService.deleteEvent(eventId, trustedAdminId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Event deleted successfully", null));
+    }
 }

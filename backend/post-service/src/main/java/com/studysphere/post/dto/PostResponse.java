@@ -11,6 +11,7 @@ public class PostResponse {
     private Long collegeId;
     private Long communityId; // If null, it goes to the General Feed
     private int upvotes;
+    private int downvotes;
     private LocalDateTime createdAt;
     
     // The aggregated data from the user-service!

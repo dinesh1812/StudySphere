@@ -1,4 +1,5 @@
 package com.studysphere.post.service;
+
 import feign.FeignException;
 
 import com.studysphere.common.response.ApiResponse;
@@ -17,13 +18,7 @@ import com.studysphere.post.model.PostUpvote;
 import com.studysphere.post.model.CommentUpvote;
 import com.studysphere.post.model.CommentDownvote;
 import com.studysphere.common.enums.PostStatus;
-import com.studysphere.post.repository.CommentDownvoteRepository;
-import com.studysphere.post.repository.CommentRepository;
-import com.studysphere.post.repository.CommentUpvoteRepository;
-import com.studysphere.post.repository.PostDownvoteRepository;
-import com.studysphere.post.repository.PostReportRepository;
-import com.studysphere.post.repository.PostRepository;
-import com.studysphere.post.repository.PostUpvoteRepository;
+import com.studysphere.post.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -36,8 +31,10 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final EventRepository eventRepository;
     private final PostUpvoteRepository postUpvoteRepository;
-    private final UserClient userClient; 
+    private final UserClient userClient;
+    private final CommunityMemberRepository communityMemberRepository;
     private final ModerationClient moderationClient;
     private final PostReportRepository postReportRepository;
     private final PostDownvoteRepository postDownvoteRepository;
@@ -51,8 +48,9 @@ public class PostService {
         response.setTitle(post.getTitle());
         response.setContent(post.getContent());
         response.setCollegeId(post.getCollegeId());
-        response.setCommunityId(post.getCommunityId()); 
+        response.setCommunityId(post.getCommunityId());
         response.setUpvotes(post.getUpvotes());
+        response.setDownvotes(post.getDownvotes());
         response.setCreatedAt(post.getCreatedAt());
 
         if (currentUserId != null) {
@@ -78,7 +76,7 @@ public class PostService {
         return response;
     }
 
-    // 1. CREATE POST 
+    // 1. CREATE POST
     public PostResponse createPost(PostRequest request) {
             Post post = new Post();
             post.setTitle(request.getTitle());
@@ -107,6 +105,13 @@ public class PostService {
                 post.setStatus(PostStatus.PENDING);
             }
             
+            // 3. Security Check: If posting to a community, verify membership
+            if (request.getCommunityId() != null) {
+                if (!communityMemberRepository.existsByCommunityIdAndStudentId(request.getCommunityId(), request.getAuthorId())) {
+                    throw new RuntimeException("Security Violation: You must join this community before posting.");
+                }
+            }
+            
             Post savedPost = postRepository.save(post);
             return mapToPostResponse(savedPost, request.getAuthorId());
         }
@@ -118,17 +123,18 @@ public class PostService {
         return mapToPostResponse(post, currentUserId);
     }
 
-    // 2. FETCH GENERAL FEED 
+    // 2. FETCH GENERAL FEED
     public List<PostResponse> getGeneralFeed(Long userId) {
         // Only get APPROVED posts
         List<Post> posts = postRepository.findByCommunityIdIsNullAndStatusOrderByCreatedAtDesc(PostStatus.APPROVED);
         return posts.stream().map(p -> this.mapToPostResponse(p, userId)).collect(Collectors.toList());
     }
 
-    // 3. FETCH COMMUNITY FEED 
+    // 3. FETCH COMMUNITY FEED
     public List<PostResponse> getCommunityFeed(Long communityId, Long userId) {
         // Only get APPROVED posts
-        List<Post> posts = postRepository.findByCommunityIdAndStatusOrderByCreatedAtDesc(communityId, PostStatus.APPROVED);
+        List<Post> posts = postRepository.findByCommunityIdAndStatusOrderByCreatedAtDesc(communityId,
+                PostStatus.APPROVED);
         return posts.stream().map(p -> this.mapToPostResponse(p, userId)).collect(Collectors.toList());
     }
 
@@ -136,14 +142,20 @@ public class PostService {
     public PostResponse upvotePost(Long postId, Long userId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
-        
+
         var existingUpvote = postUpvoteRepository.findByPostIdAndUserId(postId, userId);
-        
+
         if (existingUpvote.isPresent()) {
             // User already upvoted, so UN-UPVOTE (toggle off)
             postUpvoteRepository.delete(existingUpvote.get());
             post.setUpvotes(Math.max(0, post.getUpvotes() - 1));
         } else {
+            // If they already downvoted, remove the downvote first
+            postDownvoteRepository.findByPostIdAndUserId(postId, userId).ifPresent(downvote -> {
+                postDownvoteRepository.delete(downvote);
+                post.setDownvotes(Math.max(0, post.getDownvotes() - 1));
+            });
+
             // User NOT upvoted yet, so UPVOTE (toggle on)
             PostUpvote newUpvote = new PostUpvote();
             newUpvote.setPostId(postId);
@@ -151,29 +163,35 @@ public class PostService {
             postUpvoteRepository.save(newUpvote);
             post.setUpvotes(post.getUpvotes() + 1);
         }
-        
+
         Post savedPost = postRepository.save(post);
-        return mapToPostResponse(savedPost, userId); 
+        return mapToPostResponse(savedPost, userId);
     }
 
     // 5. ADD COMMENT (Now AI-Powered)
     public CommentResponse addComment(CommentRequest request) {
-        // 1. Verify the post actually exists
-        postRepository.findById(request.getPostId())
+        Post post = postRepository.findById(request.getPostId())
                 .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        // SECURITY CHECK: If this is a community post, verify membership
+        if (post.getCommunityId() != null) {
+            if (!communityMemberRepository.existsByCommunityIdAndStudentId(post.getCommunityId(),
+                    request.getAuthorId())) {
+                throw new RuntimeException("Security Violation: You must be a member of this community to comment.");
+            }
+        }
 
         // 2. RUN THE AI MODERATION GAUNTLET
         try {
             ModerationClient.ModerationResponse modResponse = moderationClient.checkContent(
-                    new ModerationClient.ModerationRequest(request.getContent())
-            );
-            
+                    new ModerationClient.ModerationRequest(request.getContent()));
+
             if (modResponse.isToxic()) {
                 // Instantly block and reject the comment
                 throw new RuntimeException("Comment blocked by AI Moderator. " + modResponse.getReason());
             }
         } catch (FeignException e) {
-            // If the Python server is offline, we'll log it but let the comment through 
+            // If the Python server is offline, we'll log it but let the comment through
             // so the app doesn't break if the AI goes down.
             System.out.println("WARNING: AI Moderation offline. Comment allowed.");
         }
@@ -187,7 +205,6 @@ public class PostService {
         return mapToCommentResponse(saved, request.getAuthorId());
     }
 
-
     // --------------------------------------------------------
     // NEW FEATURES: DELETE, REPORT, MODERATE, AND DOWNVOTE
     // --------------------------------------------------------
@@ -195,8 +212,9 @@ public class PostService {
     // 1. DELETE OWN POST
     public void deletePost(Long postId, Long userId) {
         Post post = postRepository.findById(postId).orElseThrow(() -> new RuntimeException("Post not found"));
-        
-        // Security Check: Only the author can delete it (or an admin, but we handle admin delete below)
+
+        // Security Check: Only the author can delete it (or an admin, but we handle
+        // admin delete below)
         if (!post.getAuthorId().equals(userId)) {
             throw new RuntimeException("Unauthorized: You can only delete your own posts.");
         }
@@ -206,7 +224,7 @@ public class PostService {
     // 2. REPORT A POST
     public void reportPost(Long postId, Long userId, String reason) {
         Post post = postRepository.findById(postId).orElseThrow(() -> new RuntimeException("Post not found"));
-        
+
         PostReport report = new PostReport();
         report.setPostId(postId);
         report.setReporterId(userId);
@@ -347,8 +365,17 @@ public class PostService {
             System.out.println("WARNING: AI Moderation offline. Reply allowed.");
         }
 
+        // SECURITY CHECK: If this is a community post, verify membership
+        Post post = postRepository.findById(parentComment.getPostId())
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        if (post.getCommunityId() != null) {
+            if (!communityMemberRepository.existsByCommunityIdAndStudentId(post.getCommunityId(), request.getAuthorId())) {
+                throw new RuntimeException("Security Violation: You must be a member of this community to reply.");
+            }
+        }
+
         Comment reply = new Comment();
-        reply.setPostId(parentComment.getPostId()); // Inherit post ID strictly from parent
+        reply.setPostId(parentComment.getPostId());
         reply.setParentCommentId(parentComment.getId());
         reply.setContent(request.getContent());
         reply.setAuthorId(request.getAuthorId());
@@ -366,7 +393,8 @@ public class PostService {
     }
 
     public CommentResponse upvoteComment(Long commentId, Long userId) {
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new RuntimeException("Comment not found"));
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
 
         commentDownvoteRepository.findByCommentIdAndUserId(commentId, userId).ifPresent(downvote -> {
             commentDownvoteRepository.delete(downvote);
@@ -389,7 +417,8 @@ public class PostService {
     }
 
     public CommentResponse downvoteComment(Long commentId, Long userId) {
-        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new RuntimeException("Comment not found"));
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
 
         commentUpvoteRepository.findByCommentIdAndUserId(commentId, userId).ifPresent(upvote -> {
             commentUpvoteRepository.delete(upvote);
@@ -411,4 +440,29 @@ public class PostService {
         return mapToCommentResponse(saved, userId);
     }
 
+    public void deleteComment(Long commentId, Long userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+
+        if (!comment.getAuthorId().equals(userId)) {
+             ApiResponse<UserSummaryDto> userRes = userClient.getUserSummary(userId);
+             if (userRes.isSuccess() && userRes.getData() != null) {
+                 String role = userRes.getData().getRole();
+                 if (!"SUPER_ADMIN".equals(role) && !"COLLEGE_ADMIN".equals(role)) {
+                     throw new RuntimeException("Unauthorized: You can only delete your own comments.");
+                 }
+             } else {
+                 throw new RuntimeException("Unauthorized: You can only delete your own comments.");
+             }
+        }
+
+        commentRepository.delete(comment);
+        
+        if (comment.getParentCommentId() != null) {
+            commentRepository.findById(comment.getParentCommentId()).ifPresent(parent -> {
+                parent.setReplyCount(Math.max(0, parent.getReplyCount() - 1));
+                commentRepository.save(parent);
+            });
+        }
+    }
 }

@@ -16,5 +16,10 @@ export const eventService = {
     // Currently the backend has getGlobalEvents, we can filter on frontend 
     // or add a specific endpoint if needed. For now, we fetch all.
     return await apiClient.get('/events');
+  },
+  
+  // Delete an event
+  deleteEvent: async (eventId) => {
+    return await apiClient.delete(`/events/${eventId}`);
   }
 };

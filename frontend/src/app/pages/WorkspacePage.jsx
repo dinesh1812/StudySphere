@@ -17,9 +17,9 @@ export function WorkspacePage() {
   const [postData, setPostData] = useState({ title: '', content: '' });
 
   // Create Community State
-  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
-  const [teamData, setTeamData] = useState({ name: '', description: '' });
+  const [isCreatingCommunity, setIsCreatingCommunity] = useState(false);
+  const [isSubmittingCommunity, setIsSubmittingCommunity] = useState(false);
+  const [communityData, setCommunityData] = useState({ name: '', description: '' });
 
   useEffect(() => {
     fetchCommunities();
@@ -71,31 +71,31 @@ export function WorkspacePage() {
     }
   };
 
-  const handleCreateTeam = async (e) => {
+  const handleCreateCommunity = async (e) => {
     e.preventDefault();
-    if (!teamData.name || !teamData.description) {
+    if (!communityData.name || !communityData.description) {
       toast.error('Name and description are required');
       return;
     }
 
     try {
-      setIsSubmittingTeam(true);
+      setIsSubmittingCommunity(true);
       const user = getUser();
       const res = await communityService.createCommunity({
-        name: teamData.name,
-        description: teamData.description
+        name: communityData.name,
+        description: communityData.description
         // authorId is no longer sent, backend securely extracts it from JWT via X-User-Id
       });
       if (res.success) {
-        toast.success("Research Team created!");
-        setTeamData({ name: '', description: '' });
-        setIsCreatingTeam(false);
+        toast.success("Community created!");
+        setCommunityData({ name: '', description: '' });
+        setIsCreatingCommunity(false);
         fetchCommunities(); // Refresh list
       }
     } catch (err) {
-      toast.error('Failed to create team');
+      toast.error('Failed to create community');
     } finally {
-      setIsSubmittingTeam(false);
+      setIsSubmittingCommunity(false);
     }
   };
 
@@ -105,33 +105,33 @@ export function WorkspacePage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-foreground mb-2">
-            Research Workspace
+            Workspace Hub
           </h1>
           <p className="text-muted-foreground">
-            Manage your research teams, projects, and collaborative work
+            Manage your communities, projects, and collaborative work
           </p>
         </div>
         <button 
-          onClick={() => setIsCreatingTeam(true)}
+          onClick={() => setIsCreatingCommunity(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Team
+          Community
         </button>
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <button 
-          onClick={() => setIsCreatingTeam(true)}
+          onClick={() => setIsCreatingCommunity(true)}
           className="p-6 bg-card border border-border rounded-lg hover:border-primary transition-colors text-left group"
         >
           <Users className="h-8 w-8 text-primary mb-3" />
           <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-            + Team
+            + Community
           </h3>
           <p className="text-sm text-muted-foreground">
-            Invite collaborators to work together
+            Create a space for collaborative discussion
           </p>
         </button>
 
@@ -151,7 +151,7 @@ export function WorkspacePage() {
 
       {/* Active Projects */}
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Active Projects / Teams</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Active Projects / Communities</h2>
         <button onClick={fetchCommunities} className="text-sm text-primary hover:underline">
           Refresh List
         </button>
@@ -164,7 +164,7 @@ export function WorkspacePage() {
           </div>
         ) : projects.length === 0 ? (
           <div className="text-center py-12 bg-card border border-border rounded-lg">
-            <p className="text-muted-foreground">No active research teams found. Start a project!</p>
+            <p className="text-muted-foreground">No active research communities found. Start a project!</p>
           </div>
         ) : (
           projects.map((project) => (
@@ -184,7 +184,7 @@ export function WorkspacePage() {
                     </span>
                     <span className="flex items-center gap-1.5">
                       <Users className="h-4 w-4" />
-                      Community Team
+                      Community
                     </span>
                     <span className="flex items-center gap-1.5 line-clamp-1">
                       {project.description}
@@ -270,31 +270,31 @@ export function WorkspacePage() {
         </div>
       )}
 
-      {/* Create Team Modal */}
-      {isCreatingTeam && (
+      {/* Create Community Modal */}
+      {isCreatingCommunity && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card w-full max-w-2xl rounded-xl shadow-lg border border-border flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-2xl font-semibold text-foreground">Create Research Team</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Create Community</h2>
               <button
-                onClick={() => setIsCreatingTeam(false)}
+                onClick={() => setIsCreatingCommunity(false)}
                 className="p-2 hover:bg-secondary rounded-full transition-colors"
               >
                 <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
             
-            <form onSubmit={handleCreateTeam} className="p-6 overflow-y-auto">
+            <form onSubmit={handleCreateCommunity} className="p-6 overflow-y-auto">
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Team Name
+                    Community Name
                   </label>
                   <input
                     type="text"
-                    value={teamData.name}
-                    onChange={(e) => setTeamData({ ...teamData, name: e.target.value })}
-                    placeholder="Enter team name..."
+                    value={communityData.name}
+                    onChange={(e) => setCommunityData({ ...communityData, name: e.target.value })}
+                    placeholder="Enter community name..."
                     className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
                     required
                   />
@@ -305,9 +305,9 @@ export function WorkspacePage() {
                     Description
                   </label>
                   <textarea
-                    value={teamData.description}
-                    onChange={(e) => setTeamData({ ...teamData, description: e.target.value })}
-                    placeholder="Describe your research team's purpose..."
+                    value={communityData.description}
+                    onChange={(e) => setCommunityData({ ...communityData, description: e.target.value })}
+                    placeholder="Describe your community's purpose..."
                     rows={4}
                     className="w-full px-4 py-3 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
                     required
@@ -318,18 +318,18 @@ export function WorkspacePage() {
               <div className="mt-8 flex justify-end gap-4">
                 <button
                   type="button"
-                  onClick={() => setIsCreatingTeam(false)}
+                  onClick={() => setIsCreatingCommunity(false)}
                   className="px-6 py-2.5 rounded-lg border border-border hover:bg-secondary transition-colors text-foreground font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmittingTeam}
+                  disabled={isSubmittingCommunity}
                   className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors disabled:opacity-50"
                 >
-                  {isSubmittingTeam && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Create Team
+                  {isSubmittingCommunity && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Create Community
                 </button>
               </div>
             </form>
