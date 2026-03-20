@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-import { Users, Building2, User, LogOut, Shield, Calendar } from 'lucide-react';
+import { Users, Building2, User, LogOut, Shield, Calendar, ShieldAlert } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getUser, logout } from '@/auth/auth';
 import { authService } from '@/api/authService';
@@ -28,6 +28,7 @@ export function AdminLayout() {
   const navItems = [
     { path: '/', label: 'Student Approvals', icon: Users },
     { path: '/events', label: 'Events Management', icon: Calendar },
+    { path: '/moderation', label: 'Moderation', icon: ShieldAlert },
   ];
 
   const initials = fullName

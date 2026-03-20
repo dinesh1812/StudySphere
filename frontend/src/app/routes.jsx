@@ -19,6 +19,7 @@ import { SignupPage } from '@/app/pages/SignupPage';
 import { AdminDashboard } from '@/app/pages/AdminDashboard';
 import { SuperAdminDashboard } from '@/app/pages/SuperAdminDashboard';
 import { CommunityFeedPage } from '@/app/pages/CommunityFeedPage';
+import { ModerationPage } from '@/app/pages/ModerationPage';
 
 import { getUser } from '@/auth/auth';
 
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
             return user?.role === 'COLLEGE_ADMIN' ? <AdminEventsPage /> : <StudentEventsPage />;
           }},
           { path: 'profile/:username', Component: ProfilePage },
+          { path: 'moderation', Component: ModerationPage },
         ],
       },
     ],

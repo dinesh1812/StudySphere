@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router';
-import { Shield, User, LogOut } from 'lucide-react';
+import { Shield, User, LogOut, ShieldAlert } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getUser, logout } from '@/auth/auth';
 import { authService } from '@/api/authService';
@@ -27,6 +27,7 @@ export function SuperAdminLayout() {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Shield },
+    { path: '/moderation', label: 'Moderation', icon: ShieldAlert },
   ];
 
   const initials = fullName
