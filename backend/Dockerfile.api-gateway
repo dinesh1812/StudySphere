@@ -1,5 +1,5 @@
 # Stage 1: Build the code
-FROM maven:3.8.5-openjdk-17-slim AS build
+FROM maven:3.8.5-eclipse-temurin-17 AS build
 WORKDIR /app
 
 COPY common-lib ./common-lib
@@ -9,7 +9,7 @@ COPY api-gateway ./api-gateway
 RUN cd api-gateway && mvn clean package -DskipTests
 
 # Stage 2: Run the application
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=build /app/api-gateway/target/*.jar app.jar
 
