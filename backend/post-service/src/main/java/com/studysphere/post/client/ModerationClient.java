@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 // Bypasses Eureka and calls the Python server directly
-@FeignClient(name = "moderation-service", url = "http://localhost:8000")
+@FeignClient(name = "moderation-service", url = "${MODERATION_SERVICE_URL}")
 public interface ModerationClient {
 
     @PostMapping("/api/moderate")
