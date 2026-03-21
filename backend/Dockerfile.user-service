@@ -1,0 +1,21 @@
+# Stage 1: Build the code
+FROM maven:3.8.5-openjdk-17-slim AS build
+WORKDIR /app
+
+# 1. Copy the common library and install it into the container's local Maven repo
+COPY common-lib ./common-lib
+RUN cd common-lib && mvn clean install -DskipTests
+
+# 2. Copy the user service and package it
+COPY user-service ./user-service
+RUN cd user-service && mvn clean package -DskipTests
+
+# Stage 2: Run the application
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+# Copy the built .jar file from Stage 1
+COPY --from=build /app/user-service/target/*.jar app.jar
+
+# user-service runs on 8081
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "app.jar"]

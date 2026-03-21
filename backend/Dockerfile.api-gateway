@@ -1,0 +1,18 @@
+# Stage 1: Build the code
+FROM maven:3.8.5-openjdk-17-slim AS build
+WORKDIR /app
+
+COPY common-lib ./common-lib
+RUN cd common-lib && mvn clean install -DskipTests
+
+COPY api-gateway ./api-gateway
+RUN cd api-gateway && mvn clean package -DskipTests
+
+# Stage 2: Run the application
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=build /app/api-gateway/target/*.jar app.jar
+
+# api-gateway runs on 8080
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
