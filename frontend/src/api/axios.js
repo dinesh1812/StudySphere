@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken, logout } from '../auth/auth';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Point to API Gateway
+  baseURL: import.meta.env.VITE_API_BASE_URL, // Point to API Gateway
   headers: {
     'Content-Type': 'application/json',
   },
