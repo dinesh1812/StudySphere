@@ -13,7 +13,7 @@ app = FastAPI(title="StudySphere Moderation Service")
 HF_TOKEN = os.getenv("HF_TOKEN")
 # Swapped to a highly available, fast binary toxicity model
 MODEL_ID = "martin-ha/toxic-comment-model"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
+API_URL = f"https://router.huggingface.co/hf-inference/models/{MODEL_ID}"
 
 # --- Data Models ---
 class ModerationRequest(BaseModel):
