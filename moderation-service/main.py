@@ -5,14 +5,14 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# Load .env file for local development (Render will use Dashboard Env Vars)
 load_dotenv()
 
 app = FastAPI(title="StudySphere Moderation Service")
 
 # --- Configuration ---
 HF_TOKEN = os.getenv("HF_TOKEN")
-MODEL_ID = "unitary/toxic-bert"
+# Swapped to a highly available, fast binary toxicity model
+MODEL_ID = "martin-ha/toxic-comment-model"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
 
 # --- Data Models ---
@@ -39,7 +39,6 @@ def moderate_text(request: ModerationRequest):
         
         if response.status_code == 200:
             data = response.json()
-            # Hugging Face returns a list of lists: [[{'label': 'toxic', 'score': 0.9}, ...]]
             results = data[0]
             
             is_toxic = False
@@ -47,34 +46,32 @@ def moderate_text(request: ModerationRequest):
             reason = "CLEAN"
 
             for label_data in results:
-                # If any toxic category is above 80% confidence
-                if label_data['score'] > 0.80:
+                label_name = label_data['label'].lower()
+                
+                # BUG FIX: Explicitly ensure we are only flagging the "toxic" label
+                if label_name == 'toxic' and label_data['score'] > 0.80:
                     is_toxic = True
-                    # Keep track of the highest toxicity score found
-                    if label_data['score'] > highest_score:
-                        highest_score = label_data['score']
-                        reason = f"Flagged for: {label_data['label'].upper()}"
+                    highest_score = label_data['score']
+                    reason = "Flagged for: TOXIC CONTENT"
             
             return ModerationResponse(
                 isToxic=is_toxic, 
-                score=round(highest_score, 4), 
+                score=round(highest_score, 4) if is_toxic else 0.0, 
                 reason=reason
             )
 
         elif response.status_code == 503:
-            # Model is loading, wait 5 seconds and try again
             print(f"Model is loading (Attempt {attempt+1}/3). Waiting...")
             time.sleep(5)
             continue
         
         else:
-            # Other errors (401, 404, 500)
             raise HTTPException(
                 status_code=response.status_code, 
                 detail=f"Hugging Face API Error: {response.text}"
             )
 
-    raise HTTPException(status_code=503, detail="AI Model took too long to load. Please try again.")
+    raise HTTPException(status_code=503, detail="AI Model took too long to load.")
 
 @app.get("/")
 def health_check():
